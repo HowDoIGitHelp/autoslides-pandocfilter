@@ -3,7 +3,7 @@
 import Text.Pandoc.JSON
 import Text.Pandoc.Walk (walk)
 import Text.Pandoc.Definition (Inline(SoftBreak))
-import Data.Text (Text)
+import Data.Text (Text, length, pack)
 
 isSoftBreak :: Inline -> Bool
 isSoftBreak SoftBreak = True
@@ -105,6 +105,42 @@ sectionToSlides (header@(Header _ _ _) : nonHeader : rest) | not (isHeader nonHe
     [header, nonHeader, (RawBlock (Format "markdown") "---")] ++ sectionToSlides rest
 sectionToSlides (block : rest) = block : sectionToSlides rest
 sectionToSlides [] = []
+
+inlineLength :: Inline -> Int
+inlineLength Space = 1
+inlineLength SoftBreak = 1
+inlineLength LineBreak = 1
+inlineLength (Note _) = 1
+inlineLength (Str text) = Data.Text.length text
+inlineLength (Code _ text) = Data.Text.length text
+inlineLength (Math _ text) = Data.Text.length text
+inlineLength (RawInline _ text) = Data.Text.length text
+inlineLength (Emph inlines) = sum (map inlineLength inlines)
+inlineLength (Underline inlines) = sum (map inlineLength inlines)
+inlineLength (Strong inlines) = sum (map inlineLength inlines)
+inlineLength (Strikeout inlines) = sum (map inlineLength inlines)
+inlineLength (Superscript inlines) = sum (map inlineLength inlines)
+inlineLength (Subscript inlines) = sum (map inlineLength inlines)
+inlineLength (SmallCaps inlines) = sum (map inlineLength inlines)
+inlineLength (Link _ inlines _) = sum (map inlineLength inlines)
+inlineLength (Image _ inlines _) = sum (map inlineLength inlines)
+inlineLength (Span _ inlines) = sum (map inlineLength inlines)
+inlineLength (Quoted _ inlines) = sum (map inlineLength inlines)
+inlineLength (Cite _ inlines) = sum (map inlineLength inlines)
+
+componentLength :: Block -> Int
+componentLength (Plain inlines) = sum (map inlineLength inlines)
+
+componentHeight :: Block -> Int
+componentHeight (BulletList items) = sum (map blockListHeight items)
+componentHeight block = ceiling (((fromIntegral . componentLength) block) / 100.0)
+
+blockListHeight :: [Block] -> Int
+blockListHeight blocks = sum (map componentHeight blocks)
+
+heightFilter :: Block -> Block
+heightFilter (BulletList items) = BulletList (map ((\x -> [Plain [Str (pack (show x))]]) . blockListHeight) items)
+heightFilter block = block
 
 dropEmpty :: [Block] -> [Block]
 dropEmpty (Header _ _ _ : HorizontalRule : rest) = dropEmpty rest
