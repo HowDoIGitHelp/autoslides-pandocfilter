@@ -31,6 +31,7 @@ isImportant _ = False
 isImportantSentence :: [Inline] -> Bool
 isImportantSentence words = any isImportant words
 
+--replaces paragraphs with a bulletlist of only important sentences
 itemize :: Block -> Block
 itemize (Para [Math DisplayMath eq]) = Para [Code ("", [], []) (wrapEquation eq)]
 itemize (Para paracontents) = BulletList (map (\x -> [Plain x]) importantItems)
@@ -47,6 +48,7 @@ dropStrayHRule :: Block -> [Block]
 dropStrayHRule HorizontalRule = []
 dropStrayHRule block = [block]
 
+-- splits a list into a list of lists based on a predicate
 listSplit :: (a -> Bool) -> [a] -> [[a]]
 listSplit _ [] = [[]]
 listSplit p l = 
@@ -55,6 +57,8 @@ listSplit p l =
         (lf, _:rs) -> lf : listSplit p rs
 
 
+-- splits a list into a list of lists based on a predicate
+-- but keeps the delims as separate lists
 listSplitKeep :: (a -> Bool) -> [a] -> [[a]]
 listSplitKeep _ [] = [[]]
 listSplitKeep pred l = 
@@ -62,28 +66,40 @@ listSplitKeep pred l =
         (lf, [])   -> lf : []
         (lf, r:rs) -> lf : [r] : (listSplitKeep pred rs)
 
+-- returns the even indices of the list
 evenIndices :: [a] -> [a]
 evenIndices (x : _ : xs) = x : evenIndices xs
 evenIndices [x] = [x]
 evenIndices [] = []
 
+-- returns the odd indices of the list
 oddIndices :: [a] -> [a]
 oddIndices (_ : x : xs) = x : oddIndices xs
 oddIndices _ = []
 
+
+-- given a prepared list of list of blocks from listSplitKeep,
+-- apply interleave to each pair of list
+-- given [[],[h1],[b1,b2,b3],[h2],[b4,b5]]
+-- [[h1,b1,h1,b2,h1,b3],[h2,b4,h2,b5]]
 combineHeaders :: [[Block]] -> [[Block]]
 combineHeaders ([]:ls) = combineHeaders ls
 combineHeaders ls = zipWith interleave (map head (evenIndices ls)) (oddIndices ls)
 
+-- interleaves a block in between the elements of a list of blocks
+-- if it the block is a header remove id metadata
 interleave :: Block -> [Block] -> [Block]
 interleave (Header level (_, classes, kvattrs) inlines) l = concatMap (\x -> [betweener,x]) l
     where
         betweener = (Header level ("", classes, kvattrs) inlines)
 interleave betweener l = concatMap (\x -> [betweener,x]) l
 
+-- applies combineHeaders list of blocks in the pandoc document
+-- and flattens the resulting list
 insertHeaders :: Pandoc -> Pandoc
 insertHeaders (Pandoc meta blocks) = Pandoc meta (foldl (++) [] (combineHeaders (listSplitKeep (isHeader) blocks)))
 
+-- add slide separators "---" in bewtween headers 
 sectionToSlides :: [Block] -> [Block]
 sectionToSlides (header@(Header _ _ _) : nonHeader : rest) | not (isHeader nonHeader) = 
     [header, nonHeader, (RawBlock (Format "markdown") "---")] ++ sectionToSlides rest
