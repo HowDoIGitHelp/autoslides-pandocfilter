@@ -2,8 +2,16 @@
 
 import Text.Pandoc.JSON
 import Text.Pandoc.Walk (walk)
-import Text.Pandoc.Definition (Inline(SoftBreak))
+import Text.Pandoc.Definition (Inline(SoftBreak), Block(BulletList))
 import Data.Text (Text, length, pack)
+import Text.Regex.Pcre2 (gsub, match, sub)
+import Debug.Trace
+
+slidelines :: Int
+slidelines = 6
+
+linewidth :: Int
+linewidth = 100
 
 isSoftBreak :: Inline -> Bool
 isSoftBreak SoftBreak = True
@@ -23,6 +31,9 @@ filterOutNotes l = filter isNote l
 wrapEquation :: Text -> Text
 wrapEquation eq = "$$" <> eq <> "$$"
 
+wrapEquationAligned :: Text -> Text
+wrapEquationAligned eq = "\\begin{aligned}\n" <> eq <> "\n\\end{aligned}"
+
 isImportant :: Inline -> Bool
 isImportant (Strong _) = True
 isImportant (Emph _) = True
@@ -33,7 +44,7 @@ isImportantSentence words = any isImportant words
 
 --replaces paragraphs with a bulletlist of only important sentences
 itemize :: Block -> Block
-itemize (Para [Math DisplayMath eq]) = Para [Code ("", [], []) (wrapEquation eq)]
+itemize (Para [Math DisplayMath eq]) = Para [Math DisplayMath eq]
 itemize (Para paracontents) = BulletList (map (\x -> [Plain x]) importantItems)
     where
         items = (listSplit isSoftBreak (filter (not . isNote) paracontents))
@@ -137,7 +148,7 @@ componentLength (Plain inlines) = sum (map inlineLength inlines)
 -- assume that the block wraps to the next line
 componentHeight :: Block -> Int
 componentHeight (BulletList items) = sum (map blockListHeight items)
-componentHeight block = ceiling (((fromIntegral . componentLength) block) / 100.0)
+componentHeight block = ceiling (((fromIntegral . componentLength) block) / (fromIntegral linewidth))
 
 -- returns the sum of the heights in a list of blocks
 blockListHeight :: [Block] -> Int
@@ -165,10 +176,75 @@ binSplit (y:ys) binSize sizeof = go ys binSize sizeof [[y]]
                 b = last binList
                 ib = init binList
 
+-- splits a BulletList block into multiple bulletlists
+-- based on max slidelines
+splitList :: Block -> [Block]
+splitList (BulletList items) = (map (\x -> BulletList x) binnedItems)
+    where
+        binnedItems = (binSplit items slidelines blockListHeight)
+splitList block = [block]
+
+-- splits blocks into multiple slides
+split :: [Block] -> [Block]
+split (header@(Header _ _ _) : bulletList@(BulletList _) : (RawBlock (Format "markdown") "---") : rest) = 
+    (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitList bulletList)) ++ (split rest)
+split l = l
+
 dropEmpty :: [Block] -> [Block]
 dropEmpty (Header _ _ _ : HorizontalRule : rest) = dropEmpty rest
 dropEmpty (block : rest) = block : dropEmpty rest
 dropEmpty [] = []
 
+-- this function is used to mask multiline environments with {{<env>}}
+maskedMultilines :: String -> Text -> (Text, [Text])
+maskedMultilines env mathBlock = (replacedBlock, matches) 
+    where
+        pattern = pack ("(?s)\\\\begin\\{" ++ env ++ "\\}.*?\\\\end\\{" ++ env ++ "\\}") :: Text
+        replacement = pack ("{{" ++ env ++ "}}") :: Text
+        matches = match pattern mathBlock :: [Text]
+        replacedBlock = gsub pattern replacement mathBlock
+
+-- replaces latex newlines with {{nl}}
+maskNewlines :: Text -> Text
+maskNewlines mathBlock = replacedBlock
+    where
+        pattern = pack "\\\\\\\\"
+        replacement = pack "{{nl}}"
+        replacedBlock = gsub pattern replacement mathBlock
+
+envs :: [String]
+envs = ["bmatrix", "matrix"]
+
+-- from a list of envs, it returns the same mathblock but with
+-- each env from the list masked, it also recovers a list of list of the 
+-- replaced env matches
+multiEnvMask :: [String] -> Text -> (Text, [[Text]])
+multiEnvMask [] mathBlock = (mathBlock, [])
+multiEnvMask (x:xs) mathBlock = (replacedBlockR, matches : matchesR)
+    where
+        (replacedBlock, matches) = maskedMultilines x mathBlock
+        (replacedBlockR, matchesR) = multiEnvMask xs replacedBlock
+
+maskMath :: Block -> Block
+maskMath (Para [Math DisplayMath mathBlock]) =
+    (Para [Math DisplayMath (multiRecoverEnvs envs matches (maskNewlines replacedBlock))])
+    where
+       (replacedBlock, matches) = multiEnvMask envs mathBlock
+maskMath block = block
+
+-- multiple version of recoverEnvs,
+-- recovers mulitple envs from a list of list of matches
+multiRecoverEnvs :: [String] -> [[Text]] -> Text -> Text
+multiRecoverEnvs [] _ mathBlock = mathBlock
+multiRecoverEnvs _ [] mathBlock = mathBlock
+multiRecoverEnvs (e:es) (m:ms) mathBlock = multiRecoverEnvs es ms (recoverEnvs e m mathBlock)
+
+-- restores masked envs based on a list of matches
+recoverEnvs :: String -> [Text] -> Text -> Text
+recoverEnvs _ [] mathBlock = mathBlock
+recoverEnvs env (m:ms) mathBlock = recoverEnvs env ms (sub pattern m mathBlock)
+    where pattern = pack ("\\{\\{" ++ env ++ "\\}\\}")
+
+
 main :: IO ()
-main = toJSONFilter ((walk sectionToSlides) . insertHeaders . (walk (concatMap dropStrayHRule)) . (walk (concatMap dropEmptyList)) . (walk itemize))
+main = toJSONFilter ((walk maskMath) . (walk split) . (walk sectionToSlides) . insertHeaders . (walk (concatMap dropStrayHRule)) . (walk (concatMap dropEmptyList)) . (walk itemize))

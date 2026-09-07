@@ -1,3 +1,7 @@
+import Text.Regex.TDFA (getAllTextMatches, (=~))
+import Text.Regex.Pcre2 (gsub)
+import Data.Text (Text)
+
 listSplit :: (a -> Bool) -> [a] -> [[a]]
 listSplit _ [] = [[]]
 listSplit pred l = 
@@ -48,22 +52,3 @@ binSplit (y:ys) binSize sizeof = go ys binSize sizeof [[y]]
                 totalsize = sum (map sizeof b)
                 b = last binList
                 ib = init binList
-
--- binSplit [1,2,4,1] 4 [[1]]
--- b = [1]
--- ib = []
--- binSplit [2,4,1] 4 [] ++ [[1] ++ [1]]
--- binSplit [2,4,1] 4 [[1,1]]
--- b = [1,1]
--- ib = []
--- binSplit [4,1] 4 [] ++ [[1,1] ++ [2]]
--- binSplit [4,1] 4 [[1,1,2]]
--- b = [1,1,2]
--- ib = []
--- binSplit [1] 4 [] ++ [[1,1,2]] ++ [[4]]
--- binSplit [1] 4 [[1,1,2],[4]]
--- b = [4]
--- ib = [[1,1,2]]
--- binSplit [] 4 [[1,1,2]] ++ [[4]] ++ [[1]]
--- binSplit [] 4 [[1,1,2],[4],[1]]
--- [[1,1,2],[4],[1]]
