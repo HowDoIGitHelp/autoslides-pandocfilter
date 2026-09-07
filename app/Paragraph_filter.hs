@@ -106,6 +106,7 @@ sectionToSlides (header@(Header _ _ _) : nonHeader : rest) | not (isHeader nonHe
 sectionToSlides (block : rest) = block : sectionToSlides rest
 sectionToSlides [] = []
 
+-- calculates the lenght of an inline
 inlineLength :: Inline -> Int
 inlineLength Space = 1
 inlineLength SoftBreak = 1
@@ -131,16 +132,38 @@ inlineLength (Cite _ inlines) = sum (map inlineLength inlines)
 componentLength :: Block -> Int
 componentLength (Plain inlines) = sum (map inlineLength inlines)
 
+-- calculates the height of a block
+-- if a blocks length exceeds 100,
+-- assume that the block wraps to the next line
 componentHeight :: Block -> Int
 componentHeight (BulletList items) = sum (map blockListHeight items)
 componentHeight block = ceiling (((fromIntegral . componentLength) block) / 100.0)
 
+-- returns the sum of the heights in a list of blocks
 blockListHeight :: [Block] -> Int
 blockListHeight blocks = sum (map componentHeight blocks)
 
+-- a helper function to replace list items with their heights
+-- used for debugging
 heightFilter :: Block -> Block
 heightFilter (BulletList items) = BulletList (map ((\x -> [Plain [Str (pack (show x))]]) . blockListHeight) items)
 heightFilter block = block
+
+-- splits a list of a into list of lists of a
+-- where each list in the list of lists has either 
+-- one element e with sizeof e greater than binSize
+-- or a list of elements with total sizeof <= binSize
+binSplit :: [a] -> Int -> (a -> Int) -> [[a]]
+binSplit (y:ys) binSize sizeof = go ys binSize sizeof [[y]]
+    where
+        go [] _ _ binList = binList
+        go (x:xs) binSize sizeof binList
+            | totalsize + (sizeof x) <= binSize = go xs binSize sizeof (ib ++ [(b ++ [x])])
+            | otherwise = go xs binSize sizeof (ib ++ [b] ++ [[x]])
+            where
+                totalsize = sum (map sizeof b)
+                b = last binList
+                ib = init binList
 
 dropEmpty :: [Block] -> [Block]
 dropEmpty (Header _ _ _ : HorizontalRule : rest) = dropEmpty rest

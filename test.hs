@@ -36,3 +36,34 @@ dropEmpty [] = []
 prependll :: a -> [[a]] -> [[a]]
 prependll prefix [] = [[prefix]]
 prependll prefix (l:ls) = [prefix : l]
+
+binSplit :: [a] -> Int -> (a -> Int) -> [[a]]
+binSplit (y:ys) binSize sizeof = go ys binSize sizeof [[y]]
+    where
+        go [] _ _ binList = binList
+        go (x:xs) binSize sizeof binList
+            | totalsize + (sizeof x) <= binSize = go xs binSize sizeof (ib ++ [(b ++ [x])])
+            | otherwise = go xs binSize sizeof (ib ++ [b] ++ [[x]])
+            where
+                totalsize = sum (map sizeof b)
+                b = last binList
+                ib = init binList
+
+-- binSplit [1,2,4,1] 4 [[1]]
+-- b = [1]
+-- ib = []
+-- binSplit [2,4,1] 4 [] ++ [[1] ++ [1]]
+-- binSplit [2,4,1] 4 [[1,1]]
+-- b = [1,1]
+-- ib = []
+-- binSplit [4,1] 4 [] ++ [[1,1] ++ [2]]
+-- binSplit [4,1] 4 [[1,1,2]]
+-- b = [1,1,2]
+-- ib = []
+-- binSplit [1] 4 [] ++ [[1,1,2]] ++ [[4]]
+-- binSplit [1] 4 [[1,1,2],[4]]
+-- b = [4]
+-- ib = [[1,1,2]]
+-- binSplit [] 4 [[1,1,2]] ++ [[4]] ++ [[1]]
+-- binSplit [] 4 [[1,1,2],[4],[1]]
+-- [[1,1,2],[4],[1]]
