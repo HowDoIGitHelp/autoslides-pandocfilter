@@ -45,17 +45,29 @@ isImportantSentence words = any isImportant words
 
 --replaces paragraphs with a bulletlist of only important sentences
 itemize :: Block -> Block
-itemize (Para [Math DisplayMath eq]) = Para [Math DisplayMath eq]
-itemize (Para paracontents) = BulletList (map (\x -> [Plain x]) importantItems)
+itemize block@(OrderedList _ _) = block
+itemize block@(BulletList _) = block
+itemize block@(Para [Math DisplayMath eq]) = block
+itemize (Para paracontents) = (BulletList (map (\x -> [Plain x]) importantItems))
     where
         items = (listSplit isSoftBreak (filter (not . isNote) paracontents))
         importantItems = filter isImportantSentence items
-itemize x = x
+itemize block = block
 
+topDownBlockFilter :: (Block -> Block) -> Pandoc -> Pandoc
+topDownBlockFilter blockfilter (Pandoc meta blocks) = Pandoc meta (map blockfilter blocks)
+
+-- converts math blocks to code for mathjax integration
+codifiedMath :: Block -> Block
+codifiedMath (Para [Math DisplayMath eq]) = Para [Code ("", [], []) (wrapEquation eq)]
+codifiedMath block = block
+
+-- removes empty bulletlists
 dropEmptyList :: Block -> [Block]
 dropEmptyList (BulletList []) = []
 dropEmptyList block = [block]
 
+-- removes hrules that will interfere with slide boundaries
 dropStrayHRule :: Block -> [Block]
 dropStrayHRule HorizontalRule = []
 dropStrayHRule block = [block]
@@ -118,7 +130,7 @@ sectionToSlides (header@(Header _ _ _) : nonHeader : rest) | not (isHeader nonHe
 sectionToSlides (block : rest) = block : sectionToSlides rest
 sectionToSlides [] = []
 
--- calculates the lenght of an inline
+-- calculates the length of an inline
 inlineLength :: Inline -> Int
 inlineLength Space = 1
 inlineLength SoftBreak = 1
@@ -149,6 +161,7 @@ componentLength (Plain inlines) = sum (map inlineLength inlines)
 -- assume that the block wraps to the next line
 componentHeight :: Block -> Int
 componentHeight (BulletList items) = sum (map blockListHeight items)
+componentHeight (Para inlines) = sum (map inlineLength inlines)
 componentHeight block = ceiling (((fromIntegral . componentLength) block) / (fromIntegral linewidth))
 
 -- returns the sum of the heights in a list of blocks
@@ -294,10 +307,11 @@ splitMath block = [block]
 
 main :: IO ()
 main = toJSONFilter
-    $ (walk split)
+    $ (walk codifiedMath)
+    . (walk split)
     . (walk maskMath)
     . (walk sectionToSlides)
     . insertHeaders
     . (walk (concatMap dropStrayHRule))
     . (walk (concatMap dropEmptyList))
-    . (walk itemize)
+    . (topDownBlockFilter itemize)
