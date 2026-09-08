@@ -3,9 +3,10 @@
 import Text.Pandoc.JSON
 import Text.Pandoc.Walk (walk)
 import Text.Pandoc.Definition (Inline(SoftBreak), Block(BulletList))
-import Data.Text (Text, length, pack)
+import Data.Text (Text, length, pack, splitOn, isPrefixOf, isSuffixOf, intercalate, stripPrefix, stripSuffix)
 import Text.Regex.Pcre2 (gsub, match, sub)
 import Debug.Trace
+import Data.Maybe (fromMaybe)
 
 slidelines :: Int
 slidelines = 6
@@ -188,6 +189,8 @@ splitList block = [block]
 split :: [Block] -> [Block]
 split (header@(Header _ _ _) : bulletList@(BulletList _) : (RawBlock (Format "markdown") "---") : rest) = 
     (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitList bulletList)) ++ (split rest)
+split (header@(Header _ _ _) : displayMath@(Para [Math DisplayMath _]) : (RawBlock (Format "markdown") "---") : rest) = 
+    (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitMath displayMath)) ++ (split rest)
 split l = l
 
 dropEmpty :: [Block] -> [Block]
@@ -245,6 +248,56 @@ recoverEnvs _ [] mathBlock = mathBlock
 recoverEnvs env (m:ms) mathBlock = recoverEnvs env ms (sub pattern m mathBlock)
     where pattern = pack ("\\{\\{" ++ env ++ "\\}\\}")
 
+-- checks if the mathblock is surrounded by some latex environment env
+-- used for alignment
+isEnvMath :: Text -> String -> Bool
+isEnvMath mathBlock env =
+    (isPrefixOf (pack ("\n\\begin{" ++ env ++ "}\n")) mathBlock) && (isSuffixOf (pack ("\n\\end{" ++ env ++ "}\n")) mathBlock)
+
+-- surrounds the mathblock with a latex environment env
+envMath :: Text -> String -> Text
+envMath mathBlock env = (pack ("\n\\begin{" ++ env ++ "}\n")) <> mathBlock <> (pack ("\n\\end{" ++ env ++ "}\n"))
+
+-- strips a latex environment env from a mathblock
+stripEnvMath :: Text -> String -> Text
+stripEnvMath mathBlock env = fromMaybe strippedPrefix (stripSuffix (pack ("\n\\end{" ++ env ++ "}\n")) strippedPrefix)
+    where strippedPrefix = fromMaybe mathBlock (stripPrefix (pack ("\n\\begin{" ++ env ++ "}\n")) mathBlock)
+
+-- splits a mathBlock with the masked newline "{{nl}}"
+mathLines :: Text -> [Text]
+mathLines mathBlock = splitOn (pack "{{nl}}") mathBlock
+
+-- calculates the height of a mathblock
+mathLineHeight :: Text -> Int
+mathLineHeight text = 1
+    where
+        pattern = (pack "\\\\\\\\") :: Text
+        matches = (match pattern text) :: [Text]
+
+-- removes empty lines from the mathblock
+cleanUpMathBlock :: Text -> Text
+cleanUpMathBlock mathBlock = gsub pattern replacement mathBlock
+    where
+        pattern = (pack "\\n\\n") :: Text
+        replacement = (pack "\n") :: Text
+
+-- splits a mathblock into bins
+splitMath :: Block -> [Block]
+splitMath (Para [Math DisplayMath mathBlock]) = (map (\x -> (Para [Math DisplayMath ((cleanUpMathBlock . alignment) x)])) binnedBlocks)
+    where
+        strippedEnv = stripEnvMath mathBlock "aligned"
+        lines = mathLines strippedEnv
+        binnedLines = (binSplit lines slidelines mathLineHeight)
+        binnedBlocks = map (intercalate "\\\\") binnedLines
+        alignment = if (isEnvMath mathBlock "aligned") then (\x -> envMath x "aligned") else id
+splitMath block = [block]
 
 main :: IO ()
-main = toJSONFilter ((walk maskMath) . (walk split) . (walk sectionToSlides) . insertHeaders . (walk (concatMap dropStrayHRule)) . (walk (concatMap dropEmptyList)) . (walk itemize))
+main = toJSONFilter
+    $ (walk split)
+    . (walk maskMath)
+    . (walk sectionToSlides)
+    . insertHeaders
+    . (walk (concatMap dropStrayHRule))
+    . (walk (concatMap dropEmptyList))
+    . (walk itemize)
