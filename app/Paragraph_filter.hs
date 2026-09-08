@@ -57,6 +57,9 @@ itemize block = block
 topDownBlockFilter :: (Block -> Block) -> Pandoc -> Pandoc
 topDownBlockFilter blockfilter (Pandoc meta blocks) = Pandoc meta (map blockfilter blocks)
 
+topDownBlockListFilter :: ([Block] -> [Block]) -> Pandoc -> Pandoc
+topDownBlockListFilter blocklistfilter (Pandoc meta blocks) = Pandoc meta (blocklistfilter blocks)
+
 -- converts math blocks to code for mathjax integration
 codifiedMath :: Block -> Block
 codifiedMath (Para [Math DisplayMath eq]) = Para [Code ("", [], []) (wrapEquation eq)]
@@ -114,14 +117,14 @@ combineHeaders ls = zipWith interleave (map head (evenIndices ls)) (oddIndices l
 -- if it the block is a header remove id metadata
 interleave :: Block -> [Block] -> [Block]
 interleave (Header level (_, classes, kvattrs) inlines) l = concatMap (\x -> [betweener,x]) l
-    where
-        betweener = (Header level ("", classes, kvattrs) inlines)
+    where betweener = (Header level ("", classes, kvattrs) inlines)
 interleave betweener l = concatMap (\x -> [betweener,x]) l
 
 -- applies combineHeaders list of blocks in the pandoc document
 -- and flattens the resulting list
 insertHeaders :: Pandoc -> Pandoc
-insertHeaders (Pandoc meta blocks) = Pandoc meta (foldl (++) [] (combineHeaders (listSplitKeep (isHeader) blocks)))
+insertHeaders (Pandoc meta blocks) = (Pandoc meta (foldl (++) [] (combineHeaders splitBlocks)))
+    where splitBlocks = (listSplitKeep (isHeader) blocks)
 
 -- add slide separators "---" in bewtween headers 
 sectionToSlides :: [Block] -> [Block]
@@ -161,7 +164,8 @@ componentLength (Plain inlines) = sum (map inlineLength inlines)
 -- assume that the block wraps to the next line
 componentHeight :: Block -> Int
 componentHeight (BulletList items) = sum (map blockListHeight items)
-componentHeight (Para inlines) = sum (map inlineLength inlines)
+componentHeight (Para inlines) = ceiling ((fromIntegral totalInlineLength) / (fromIntegral linewidth))
+    where totalInlineLength = sum (map inlineLength inlines)
 componentHeight block = ceiling (((fromIntegral . componentLength) block) / (fromIntegral linewidth))
 
 -- returns the sum of the heights in a list of blocks
@@ -308,7 +312,7 @@ splitMath block = [block]
 main :: IO ()
 main = toJSONFilter
     $ (walk codifiedMath)
-    . (walk split)
+    . (topDownBlockListFilter split)
     . (walk maskMath)
     . (walk sectionToSlides)
     . insertHeaders
