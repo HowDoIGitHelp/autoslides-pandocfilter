@@ -1,4 +1,12 @@
-### Pure functions
+# A Stateless Paradigm
+
+---
+
+# Functional purity and the absence of states
+
+---
+
+# Pure functions
 
 - We can define a function as the *mapping* between the elements of $A$
   and $B$.
@@ -7,7 +15,7 @@
 
 ---
 
-### Pure functions
+# Pure functions
 
 `$$
 f:(A\to B)
@@ -15,13 +23,13 @@ $$`
 
 ---
 
-### Pure functions
+# Pure functions
 
 - We call these functions, **pure functions**.
 
 ---
 
-### Pure functions
+# Pure functions
 
 ``` c
 int square(int x){
@@ -32,14 +40,14 @@ int square(int x){
 
 ---
 
-### Pure functions
+# Pure functions
 
 - The effect on the logger is what we call a **side effect** of the
   `square` function.
 
 ---
 
-### Pure functions
+# Pure functions
 
 ``` c
 int* increaseArray(int *a, int size){
@@ -50,7 +58,7 @@ int* increaseArray(int *a, int size){
 
 ---
 
-### Pure functions
+# Pure functions
 
 - A pass by address/reference function which changes the value of a
   parameter will automatically be an impure function since changing the
@@ -58,7 +66,7 @@ int* increaseArray(int *a, int size){
 
 ---
 
-### Pure functions
+# Pure functions
 
 ``` kotlin
 fun headsortails(n: Int) {
@@ -73,14 +81,14 @@ fun headsortails(n: Int) {
 
 ---
 
-### Pure functions
+# Pure functions
 
 1.  A pure function has no side effects
-2.  A pure functions output must be dependent on the inputs alone[^1]
+2.  A pure functions output must be dependent on the inputs alone
 
 ---
 
-### Pure functions
+# Pure functions
 
 - A good way to test if a function is pure is if you can (theoretically)
   create an infinitely long *lookup table* such that, looking up the
@@ -89,27 +97,20 @@ fun headsortails(n: Int) {
 
 ---
 
-### Pure functions
+# Pure functions
 
 | Domain (`x :: Int`) | Range (`(square x) :: Int`) |
 |:-------------------:|:---------------------------:|
 |      $\vdots$       |          $\vdots$           |
 |        $-2$         |             $4$             |
 |        $-1$         |             $1$             |
-
----
-
-### Pure functions
-
-| Domain (`x :: Int`) | Range (`(square x) :: Int`) |
-|:-------------------:|:---------------------------:|
 |         $0$         |             $0$             |
 |         $1$         |             $1$             |
 |         $2$         |             $4$             |
 
 ---
 
-### Pure functions
+# Pure functions
 
 | Domain (`x :: Int`) | Range (`(square x) :: Int`) |
 |:-------------------:|:---------------------------:|
@@ -117,27 +118,20 @@ fun headsortails(n: Int) {
 
 ---
 
-### Pure functions
+# Pure functions
 
 | Domain (`n :: Int`) | Range (`(headsortails(n)) :: MutableList<String>`) |
 |:-------------------:|:--------------------------------------------------:|
 |         $0$         |                        `[]`                        |
 |         $1$         |                    `["Heads"]`                     |
 |         $1$         |                    `["Tails"]`                     |
-
----
-
-### Pure functions
-
-| Domain (`n :: Int`) | Range (`(headsortails(n)) :: MutableList<String>`) |
-|:-------------------:|:--------------------------------------------------:|
 |         $2$         |                `["Heads", "Heads"]`                |
 |         $2$         |                `["Heads", "Tails]"`                |
 |      $\vdots$       |                      $\vdots$                      |
 
 ---
 
-### Bindings vs Assignment and Referential Transparency
+# Bindings vs Assignment and Referential Transparency
 
 - Purely functional programming languages like Haskell *do not have
   assignment statements*.
@@ -147,7 +141,7 @@ fun headsortails(n: Int) {
 
 ---
 
-### Bindings vs Assignment and Referential Transparency
+# Bindings vs Assignment and Referential Transparency
 
 ``` c
 int x = 0;
@@ -156,5 +150,25 @@ x = 1;
 
 ---
 
-[^1]: In fact if $f(a)=b$ and $f(a)=c$ where $b\neq c$, then $f$ is not
-    a function at all
+# Testnestedlist
+
+- weqwe
+
+- 12312
+
+- 3123123
+
+- 231231
+
+- asdasd
+
+---
+
+# Testnestedlist
+
+- sdada
+
+  - 213123
+  - 2312313
+
+---

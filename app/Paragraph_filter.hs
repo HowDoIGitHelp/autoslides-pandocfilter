@@ -2,11 +2,10 @@
 
 import Text.Pandoc.JSON
 import Text.Pandoc.Walk (walk)
-import Text.Pandoc.Definition (Inline(SoftBreak), Block(BulletList))
 import Data.Text (Text, length, pack, splitOn, isPrefixOf, isSuffixOf, intercalate, stripPrefix, stripSuffix)
 import Text.Regex.Pcre2 (gsub, match, sub)
 import Debug.Trace
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 
 slidelines :: Int
 slidelines = 6
@@ -23,17 +22,19 @@ isHeader (Header _ _ _) = True
 isHeader _ = False
 
 isNote :: Inline -> Bool
-isNote (Note block) = True
+isNote (Note _) = True
 isNote _ = False
 
-filterOutNotes :: [Inline] -> [Inline]
-filterOutNotes l = filter isNote l
+dropNotes :: Block -> Block
+dropNotes (Para inlines) = Para (filter (not . isNote) inlines)
+dropNotes (Plain inlines) = Plain (filter (not . isNote) inlines)
+dropNotes block = block
 
 wrapEquation :: Text -> Text
 wrapEquation eq = "$$" <> eq <> "$$"
 
-wrapEquationAligned :: Text -> Text
-wrapEquationAligned eq = "\\begin{aligned}\n" <> eq <> "\n\\end{aligned}"
+-- wrapEquationAligned :: Text -> Text
+-- wrapEquationAligned eq = "\\begin{aligned}\n" <> eq <> "\n\\end{aligned}"
 
 isImportant :: Inline -> Bool
 isImportant (Strong _) = True
@@ -41,16 +42,16 @@ isImportant (Emph _) = True
 isImportant _ = False
 
 isImportantSentence :: [Inline] -> Bool
-isImportantSentence words = any isImportant words
+isImportantSentence inlines = any isImportant inlines
 
 --replaces paragraphs with a bulletlist of only important sentences
 itemize :: Block -> Block
 itemize block@(OrderedList _ _) = block
 itemize block@(BulletList _) = block
-itemize block@(Para [Math DisplayMath eq]) = block
-itemize (Para paracontents) = (BulletList (map (\x -> [Plain x]) importantItems))
+itemize block@(Para [Math DisplayMath _]) = block
+itemize (Para inlines) = (BulletList (map (\x -> [Plain x]) importantItems))
     where
-        items = (listSplit isSoftBreak (filter (not . isNote) paracontents))
+        items = (listSplit isSoftBreak inlines)
         importantItems = filter isImportantSentence items
 itemize block = block
 
@@ -88,10 +89,10 @@ listSplit p l =
 -- but keeps the delims as separate lists
 listSplitKeep :: (a -> Bool) -> [a] -> [[a]]
 listSplitKeep _ [] = [[]]
-listSplitKeep pred l = 
-    case (break pred l) of
+listSplitKeep predicate l = 
+    case (break predicate l) of
         (lf, [])   -> lf : []
-        (lf, r:rs) -> lf : [r] : (listSplitKeep pred rs)
+        (lf, r:rs) -> lf : [r] : (listSplitKeep predicate rs)
 
 -- returns the even indices of the list
 evenIndices :: [a] -> [a]
@@ -104,21 +105,23 @@ oddIndices :: [a] -> [a]
 oddIndices (_ : x : xs) = x : oddIndices xs
 oddIndices _ = []
 
-
 -- given a prepared list of list of blocks from listSplitKeep,
 -- apply interleave to each pair of list
 -- given [[],[h1],[b1,b2,b3],[h2],[b4,b5]]
 -- [[h1,b1,h1,b2,h1,b3],[h2,b4,h2,b5]]
 combineHeaders :: [[Block]] -> [[Block]]
 combineHeaders ([]:ls) = combineHeaders ls
-combineHeaders ls = zipWith interleave (map head (evenIndices ls)) (oddIndices ls)
---need to replace with zipWith to handle unpaired elements
-
+combineHeaders ls =
+    zipWith interleave betweeners (oddIndices ls)
+    where
+        betweeners = (map ((fromMaybe defaultHeader) . listToMaybe) (evenIndices ls))
+        defaultHeader = Header 1 ( "default-header" , [] , [] ) [ Str "Default" , Space , Str "Header" ]
 -- interleaves a block in between the elements of a list of blocks
--- if it the block is a header remove id metadata
+-- also removes id metadata of headers
 interleave :: Block -> [Block] -> [Block]
-interleave (Header level (_, classes, kvattrs) inlines) l = concatMap (\x -> [betweener,x]) l
-    where betweener = (Header level ("", classes, kvattrs) inlines)
+interleave (Header _ (_, classes, kvattrs) inlines) [] = [Header 1 ("", classes, kvattrs) inlines]
+interleave (Header _ (_, classes, kvattrs) inlines) l = concatMap (\x -> [betweener,x]) l
+    where betweener = (Header 1 ("", classes, kvattrs) inlines)
 interleave betweener l = concatMap (\x -> [betweener,x]) l
 
 -- applies combineHeaders list of blocks in the pandoc document
@@ -131,8 +134,8 @@ insertHeaders (Pandoc meta blocks) = (Pandoc meta (foldl (++) [] (combineHeaders
 sectionToSlides :: [Block] -> [Block]
 sectionToSlides (header@(Header _ _ _) : nonHeader : rest) | not (isHeader nonHeader) = 
     [header, nonHeader, (RawBlock (Format "markdown") "---")] ++ sectionToSlides rest
--- sectionToSlides (header1@(Header _ _ _) : header2@(Header _ _ _) : rest) =
-    [header1, (RawBlock (Format "markdown") "---"), header2, (RawBlock (Format "markdown") "---")] ++ sectionToSlides rest
+sectionToSlides (header1@(Header _ _ _) : header2@(Header _ _ _) : rest) =
+   [header1, (RawBlock (Format "markdown") "---")] ++ (sectionToSlides (header2 : rest))
 sectionToSlides (block : rest) = block : sectionToSlides rest
 sectionToSlides [] = []
 
@@ -161,15 +164,16 @@ inlineLength (Cite _ inlines) = sum (map inlineLength inlines)
 
 componentLength :: Block -> Int
 componentLength (Plain inlines) = sum (map inlineLength inlines)
+componentLength (Para inlines) = sum (map inlineLength inlines)
+componentLength _ = error "unsupported length calculation"
 
 -- calculates the height of a block
 -- if a blocks length exceeds 100,
 -- assume that the block wraps to the next line
 componentHeight :: Block -> Int
 componentHeight (BulletList items) = sum (map blockListHeight items)
-componentHeight (Para inlines) = ceiling ((fromIntegral totalInlineLength) / (fromIntegral linewidth))
-    where totalInlineLength = sum (map inlineLength inlines)
-componentHeight block = ceiling (((fromIntegral . componentLength) block) / (fromIntegral linewidth))
+componentHeight block = ceiling (blockLength / (fromIntegral linewidth))
+    where blockLength = ((fromIntegral . componentLength) block) :: Double
 
 -- returns the sum of the heights in a list of blocks
 blockListHeight :: [Block] -> Int
@@ -177,38 +181,39 @@ blockListHeight blocks = sum (map componentHeight blocks)
 
 -- a helper function to replace list items with their heights
 -- used for debugging
-heightFilter :: Block -> Block
-heightFilter (BulletList items) = BulletList (map ((\x -> [Plain [Str (pack (show x))]]) . blockListHeight) items)
-heightFilter block = block
+-- heightFilter :: Block -> Block
+-- heightFilter (BulletList items) = BulletList (map ((\x -> [Plain [Str (pack (show x))]]) . blockListHeight) items)
+-- heightFilter block = block
 
 -- splits a list of a into list of lists of a
 -- where each list in the list of lists has either 
 -- one element e with sizeof e greater than binSize
 -- or a list of elements with total sizeof <= binSize
 binSplit :: [a] -> Int -> (a -> Int) -> [[a]]
+binSplit [] _ _ = []
 binSplit (y:ys) binSize sizeof = go ys binSize sizeof [[y]]
     where
         go [] _ _ binList = binList
-        go (x:xs) binSize sizeof binList
-            | totalsize + (sizeof x) <= binSize = go xs binSize sizeof (ib ++ [(b ++ [x])])
-            | otherwise = go xs binSize sizeof (ib ++ [b] ++ [[x]])
+        go (x:xs) binSize_ sizeof_ binList
+            | totalsize + (sizeof_ x) <= binSize_ = go xs binSize sizeof_ (ib ++ [(b ++ [x])])
+            | otherwise = go xs binSize_ sizeof_ (ib ++ [b] ++ [[x]])
             where
-                totalsize = sum (map sizeof b)
+                totalsize = sum (map sizeof_ b)
                 b = last binList
                 ib = init binList
 
 -- splits a BulletList block into multiple bulletlists
 -- based on max slidelines
 splitList :: Block -> [Block]
-splitList (BulletList items) = (map (\x -> BulletList x) binnedItems)
+splitList (BulletList items) = map (\x -> BulletList x) binnedItems
     where
         binnedItems = (binSplit items slidelines blockListHeight)
 splitList block = [block]
 
-dropEmpty :: [Block] -> [Block]
-dropEmpty (Header _ _ _ : HorizontalRule : rest) = dropEmpty rest
-dropEmpty (block : rest) = block : dropEmpty rest
-dropEmpty [] = []
+-- dropEmpty :: [Block] -> [Block]
+-- dropEmpty (Header _ _ _ : HorizontalRule : rest) = dropEmpty rest
+-- dropEmpty (block : rest) = block : dropEmpty rest
+-- dropEmpty [] = []
 
 -- this function is used to mask multiline environments with {{<env>}}
 maskedMultilines :: String -> Text -> (Text, [Text])
@@ -281,10 +286,7 @@ mathLines mathBlock = splitOn (pack "{{nl}}") mathBlock
 
 -- calculates the height of a mathblock
 mathLineHeight :: Text -> Int
-mathLineHeight text = 1
-    where
-        pattern = (pack "\\\\\\\\") :: Text
-        matches = (match pattern text) :: [Text]
+mathLineHeight _ = 1
 
 -- removes empty lines from the mathblock
 cleanUpMathBlock :: Text -> Text
@@ -298,8 +300,8 @@ splitMath :: Block -> [Block]
 splitMath (Para [Math DisplayMath mathBlock]) = (map (\x -> (Para [Math DisplayMath ((cleanUpMathBlock . alignment) x)])) binnedBlocks)
     where
         strippedEnv = stripEnvMath mathBlock "aligned"
-        lines = mathLines strippedEnv
-        binnedLines = (binSplit lines slidelines mathLineHeight)
+        mLines = mathLines strippedEnv
+        binnedLines = (binSplit mLines slidelines mathLineHeight)
         binnedBlocks = map (intercalate "\\\\") binnedLines
         alignment = if (isEnvMath mathBlock "aligned") then (\x -> envMath x "aligned") else id
 splitMath block = [block]
@@ -316,11 +318,14 @@ splitTableBody (TableBody attr rowHeadColumns headerRows rows) =
 
 -- splits a table's tablebody component
 splitTable :: Block -> [Block]
-splitTable (Table attr caption colspec head (body:rest) foot) = tableList
-    where tableList = (map (\x -> Table attr caption colspec head [x] foot) (splitTableBody body))
+splitTable (Table attr caption colspec header (body:_) foot) = tableList
+    where tableList = (map (\x -> Table attr caption colspec header [x] foot) (splitTableBody body))
+splitTable block = [block]
 
 -- splits blocks into multiple slides
 split :: [Block] -> [Block]
+split (header@(Header _ _ _) : (RawBlock (Format "markdown") "---") : rest) =
+    [header, (RawBlock (Format "markdown") "---")] ++ split rest
 split (header@(Header _ _ _) : bulletList@(BulletList _) : (RawBlock (Format "markdown") "---") : rest) = 
     (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitList bulletList)) ++ (split rest)
 split (header@(Header _ _ _) : displayMath@(Para [Math DisplayMath _]) : (RawBlock (Format "markdown") "---") : rest) = 
@@ -329,11 +334,13 @@ split (header@(Header _ _ _) : table@(Table _ _ _ _ _ _) : (RawBlock (Format "ma
     (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitTable table)) ++ (split rest)
 split (header@(Header _ _ _) : block : (RawBlock (Format "markdown") "---") : rest) = 
     [header, block, (RawBlock (Format "markdown") "---")] ++ (split rest)
-split l = l
+split [] = []
+split _ = error "unsupported split"
 
 main :: IO ()
 main = toJSONFilter
     $ (walk codifiedMath)
+    . (walk dropNotes)
     . (topDownBlockListFilter split)
     . (walk maskMath)
     . (walk sectionToSlides)
