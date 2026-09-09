@@ -91,36 +91,49 @@ fun headsortails(n: Int) {
 
 ### Pure functions
 
-   Domain (`x :: Int`)   Range (`(square x) :: Int`)
-  --------------------- -----------------------------
-        $\vdots$                  $\vdots$
-          $-2$                       $4$
-          $-1$                       $1$
-           $0$                       $0$
-           $1$                       $1$
-           $2$                       $4$
-        $\vdots$                  $\vdots$
+| Domain (`x :: Int`) | Range (`(square x) :: Int`) |
+|:-------------------:|:---------------------------:|
+|      $\vdots$       |          $\vdots$           |
+|        $-2$         |             $4$             |
+|        $-1$         |             $1$             |
 
 ---
 
 ### Pure functions
 
-  ----------------------------------------------------------------------------------
-          Domain (`n :: Int`)                             Range
-                                       (`(headsortails(n)) :: MutableList<String>`)
-  ----------------------------------- ----------------------------------------------
-                  $0$                                      `[]`
+| Domain (`x :: Int`) | Range (`(square x) :: Int`) |
+|:-------------------:|:---------------------------:|
+|         $0$         |             $0$             |
+|         $1$         |             $1$             |
+|         $2$         |             $4$             |
 
-                  $1$                                  `["Heads"]`
+---
 
-                  $1$                                  `["Tails"]`
+### Pure functions
 
-                  $2$                              `["Heads", "Heads"]`
+| Domain (`x :: Int`) | Range (`(square x) :: Int`) |
+|:-------------------:|:---------------------------:|
+|      $\vdots$       |          $\vdots$           |
 
-                  $2$                              `["Heads", "Tails]"`
+---
 
-               $\vdots$                                  $\vdots$
-  ----------------------------------------------------------------------------------
+### Pure functions
+
+| Domain (`n :: Int`) | Range (`(headsortails(n)) :: MutableList<String>`) |
+|:-------------------:|:--------------------------------------------------:|
+|         $0$         |                        `[]`                        |
+|         $1$         |                    `["Heads"]`                     |
+|         $1$         |                    `["Tails"]`                     |
+
+---
+
+### Pure functions
+
+| Domain (`n :: Int`) | Range (`(headsortails(n)) :: MutableList<String>`) |
+|:-------------------:|:--------------------------------------------------:|
+|         $2$         |                `["Heads", "Heads"]`                |
+|         $2$         |                `["Heads", "Tails]"`                |
+|      $\vdots$       |                      $\vdots$                      |
 
 ---
 
@@ -140,111 +153,6 @@ fun headsortails(n: Int) {
 int x = 0;
 x = 1;
 ```
-
----
-
-### Bindings vs Assignment and Referential Transparency
-
-- The second line, **mutates** the value stored in address of `x` to the
-  new value `1`.
-- Variables in imperative programming **depend on the current state** of
-  the program.
-
----
-
-### Bindings vs Assignment and Referential Transparency
-
-![States](../mermaid_diagrams/state_changes.png)
-
----
-
-### Bindings vs Assignment and Referential Transparency
-
-``` haskell
-x = 0
-x = 1
-```
-
----
-
-### Bindings vs Assignment and Referential Transparency
-
-``` haskell
-main.hs:2:1: error:
-  Multiple declarations of ‘x’
-  Declared at: main.hs:1:1
-         main.hs:2:1
-```
-
----
-
-### Bindings vs Assignment and Referential Transparency
-
-- In Haskell, any "`=`" statement is a declaration of a **binding**.
-- For example, with `x = 0`, `x` is now **bound** to the value `0`.
-- These bindings are **final** within its scope.
-- Because of this you can predict the evaluation of any expression
-  simply by *replacing* the variable with its bound value.
-- This property is known as **referential transparency**
-  [@hughes_why_1989].
-
----
-
-## Consequences of Functional Purity, Statelessness, and Immutability
-
-- Eliminating all side effects is demonstrably *safer* against
-  accidental errors.
-
----
-
-## Consequences of Functional Purity, Statelessness, and Immutability
-
-``` c
-void f(int *x, int y){
-    *x = *x + y;
-    printf("%d\n",*x);
-    return;
-}
-int main(void) {
-    int x = 0;
-    f(&x, 3);
-    x = x - 2;
-    f(&x, 3);
-}
-```
-
----
-
-## Consequences of Functional Purity, Statelessness, and Immutability
-
-- In the previous example, the exact behavior of the function `f()`
-  **depends on where you use it**.
-
----
-
-## Consequences of Functional Purity, Statelessness, and Immutability
-
-- On a corporate setting where multiple people are working on the same
-  codebase, refactoring becomes *unsafe* without knowledge of all the
-  side effects of the functions in use.
-- On systems with *shared resources* and multi-threading it becomes even
-  more difficult to keep track of things without proper documentation.
-- These are the consequences of **referential opacity**, the opposite of
-  referential transparency.
-
----
-
-## Consequences of Functional Purity, Statelessness, and Immutability
-
-- It sacrifices assignment statements and all its derived capabilities
-  to prioritize *safety and readability*.
-
----
-
-### Statelessness as a paradigm
-
-- Applying the paradigm of statelessness is just to writing code with
-  more *discipline*.
 
 ---
 

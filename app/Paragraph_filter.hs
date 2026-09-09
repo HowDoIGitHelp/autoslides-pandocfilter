@@ -130,6 +130,8 @@ insertHeaders (Pandoc meta blocks) = (Pandoc meta (foldl (++) [] (combineHeaders
 sectionToSlides :: [Block] -> [Block]
 sectionToSlides (header@(Header _ _ _) : nonHeader : rest) | not (isHeader nonHeader) = 
     [header, nonHeader, (RawBlock (Format "markdown") "---")] ++ sectionToSlides rest
+-- sectionToSlides (header1@(Header _ _ _) : header2@(Header _ _ _) : rest) =
+    [header1, (RawBlock (Format "markdown") "---"), header2, (RawBlock (Format "markdown") "---")] ++ sectionToSlides rest
 sectionToSlides (block : rest) = block : sectionToSlides rest
 sectionToSlides [] = []
 
@@ -201,14 +203,6 @@ splitList (BulletList items) = (map (\x -> BulletList x) binnedItems)
     where
         binnedItems = (binSplit items slidelines blockListHeight)
 splitList block = [block]
-
--- splits blocks into multiple slides
-split :: [Block] -> [Block]
-split (header@(Header _ _ _) : bulletList@(BulletList _) : (RawBlock (Format "markdown") "---") : rest) = 
-    (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitList bulletList)) ++ (split rest)
-split (header@(Header _ _ _) : displayMath@(Para [Math DisplayMath _]) : (RawBlock (Format "markdown") "---") : rest) = 
-    (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitMath displayMath)) ++ (split rest)
-split l = l
 
 dropEmpty :: [Block] -> [Block]
 dropEmpty (Header _ _ _ : HorizontalRule : rest) = dropEmpty rest
@@ -308,6 +302,33 @@ splitMath (Para [Math DisplayMath mathBlock]) = (map (\x -> (Para [Math DisplayM
         binnedBlocks = map (intercalate "\\\\") binnedLines
         alignment = if (isEnvMath mathBlock "aligned") then (\x -> envMath x "aligned") else id
 splitMath block = [block]
+
+-- returns the height of a row
+rowHeight :: Row -> Int
+rowHeight _ = 1
+
+-- splits a table body into a list of tablebodies based on bins
+splitTableBody :: TableBody -> [TableBody]
+splitTableBody (TableBody attr rowHeadColumns headerRows rows) =
+    (map (\x -> TableBody attr rowHeadColumns headerRows x) binnedRows)
+    where binnedRows = binSplit rows slidelines rowHeight
+
+-- splits a table's tablebody component
+splitTable :: Block -> [Block]
+splitTable (Table attr caption colspec head (body:rest) foot) = tableList
+    where tableList = (map (\x -> Table attr caption colspec head [x] foot) (splitTableBody body))
+
+-- splits blocks into multiple slides
+split :: [Block] -> [Block]
+split (header@(Header _ _ _) : bulletList@(BulletList _) : (RawBlock (Format "markdown") "---") : rest) = 
+    (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitList bulletList)) ++ (split rest)
+split (header@(Header _ _ _) : displayMath@(Para [Math DisplayMath _]) : (RawBlock (Format "markdown") "---") : rest) = 
+    (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitMath displayMath)) ++ (split rest)
+split (header@(Header _ _ _) : table@(Table _ _ _ _ _ _) : (RawBlock (Format "markdown") "---") : rest) = 
+    (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitTable table)) ++ (split rest)
+split (header@(Header _ _ _) : block : (RawBlock (Format "markdown") "---") : rest) = 
+    [header, block, (RawBlock (Format "markdown") "---")] ++ (split rest)
+split l = l
 
 main :: IO ()
 main = toJSONFilter
