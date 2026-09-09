@@ -112,6 +112,7 @@ oddIndices _ = []
 combineHeaders :: [[Block]] -> [[Block]]
 combineHeaders ([]:ls) = combineHeaders ls
 combineHeaders ls = zipWith interleave (map head (evenIndices ls)) (oddIndices ls)
+--need to replace with zipWith to handle unpaired elements
 
 -- interleaves a block in between the elements of a list of blocks
 -- if it the block is a header remove id metadata
