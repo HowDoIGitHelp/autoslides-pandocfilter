@@ -340,8 +340,8 @@ split _ = error "unsupported split"
 argFilter :: String -> String -> Pandoc -> Pandoc
 argFilter arg1 arg2 (Pandoc meta blocks) = trace (show (arg1 ++ arg2)) (Pandoc meta blocks)
 
-pandocFilter :: [String] -> Pandoc -> Pandoc
-pandocFilter (arg1 : arg2 : rest) = 
+pandocFilterWithArgs :: [String] -> Pandoc -> Pandoc
+pandocFilterWithArgs (arg1 : arg2 : rest) = 
     (walk codifiedMath)
     . (argFilter arg1 arg2)
     . (walk dropNotes)
@@ -352,6 +352,19 @@ pandocFilter (arg1 : arg2 : rest) =
     . (walk (concatMap dropStrayHRule))
     . (walk (concatMap dropEmptyList))
     . (topDownBlockFilter itemize)
+pandocFilterWithArgs [] = pandocFilter
+
+pandocFilter :: Pandoc -> Pandoc
+pandocFilter =
+    (walk codifiedMath)
+    . (walk dropNotes)
+    . (topDownBlockListFilter split)
+    . (walk maskMath)
+    . (walk sectionToSlides)
+    . insertHeaders
+    . (walk (concatMap dropStrayHRule))
+    . (walk (concatMap dropEmptyList))
+    . (topDownBlockFilter itemize)
 
 main :: IO ()
-main = toJSONFilter pandocFilter
+main = toJSONFilter pandocFilterWithArgs
