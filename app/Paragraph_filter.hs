@@ -337,9 +337,13 @@ split (header@(Header _ _ _) : block : (RawBlock (Format "markdown") "---") : re
 split [] = []
 split _ = error "unsupported split"
 
-main :: IO ()
-main = toJSONFilter
-    $ (walk codifiedMath)
+argFilter :: String -> String -> Pandoc -> Pandoc
+argFilter arg1 arg2 (Pandoc meta blocks) = trace (show (arg1 ++ arg2)) (Pandoc meta blocks)
+
+pandocFilter :: [String] -> Pandoc -> Pandoc
+pandocFilter (arg1 : arg2 : rest) = 
+    (walk codifiedMath)
+    . (argFilter arg1 arg2)
     . (walk dropNotes)
     . (topDownBlockListFilter split)
     . (walk maskMath)
@@ -348,3 +352,6 @@ main = toJSONFilter
     . (walk (concatMap dropStrayHRule))
     . (walk (concatMap dropEmptyList))
     . (topDownBlockFilter itemize)
+
+main :: IO ()
+main = toJSONFilter pandocFilter
