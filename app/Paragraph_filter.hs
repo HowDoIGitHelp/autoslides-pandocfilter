@@ -1,11 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Text.Pandoc.JSON
-import Text.Pandoc.Walk (walk)
-import Data.Text (Text, length, pack, splitOn, isPrefixOf, isSuffixOf, intercalate, stripPrefix, stripSuffix)
+import Text.Pandoc.Builder
+import Text.Pandoc.Walk (walk, walkM)
+import Data.Text (Text, length, pack, unpack, splitOn, isPrefixOf, isSuffixOf, intercalate, stripPrefix, stripSuffix)
 import Text.Regex.Pcre2 (gsub, match, sub)
-import Debug.Trace
+import Debug.Trace (trace, traceM)
 import Data.Maybe (fromMaybe, listToMaybe)
+import Path (Path, Abs, Dir, Rel, File, toFilePath, stripProperPrefix)
+import Path.IO (resolveDir', resolveFile')
+import System.FilePath (splitDirectories, (</>))
 
 slidelines :: Int
 slidelines = 6
@@ -322,6 +326,18 @@ splitTable (Table attr caption colspec header (body:_) foot) = tableList
     where tableList = (map (\x -> Table attr caption colspec header [x] foot) (splitTableBody body))
 splitTable block = [block]
 
+codeLineHeight :: Text -> Int
+codeLineHeight _ = 1
+
+splitCode :: Block -> [Block]
+splitCode (CodeBlock (_, classes, kvs) codeBlock) =
+    map (\x -> (CodeBlock ("", classes, kvs) x)) binnedCode
+    where
+        codeLines = splitOn (pack "\n") codeBlock
+        binnedLines = binSplit codeLines slidelines codeLineHeight
+        binnedCode = map (intercalate "\n") binnedLines
+splitCode block = [block]
+
 -- splits blocks into multiple slides
 split :: [Block] -> [Block]
 split (header@(Header _ _ _) : (RawBlock (Format "markdown") "---") : rest) =
@@ -332,27 +348,61 @@ split (header@(Header _ _ _) : displayMath@(Para [Math DisplayMath _]) : (RawBlo
     (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitMath displayMath)) ++ (split rest)
 split (header@(Header _ _ _) : table@(Table _ _ _ _ _ _) : (RawBlock (Format "markdown") "---") : rest) = 
     (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitTable table)) ++ (split rest)
+split (header@(Header _ _ _) : code@(CodeBlock _ _) : (RawBlock (Format "markdown") "---") : rest) = 
+    (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitCode code)) ++ (split rest)
 split (header@(Header _ _ _) : block : (RawBlock (Format "markdown") "---") : rest) = 
     [header, block, (RawBlock (Format "markdown") "---")] ++ (split rest)
 split [] = []
 split _ = error "unsupported split"
 
-argFilter :: String -> String -> Pandoc -> Pandoc
-argFilter arg1 arg2 (Pandoc meta blocks) = trace (show (arg1 ++ arg2)) (Pandoc meta blocks)
+dropCommon :: Eq a => [a] -> [a] -> ([a], [a])
+dropCommon (x:xs) (y:ys) | x == y = dropCommon xs ys
+dropCommon a b = (a, b)
 
-pandocFilterWithArgs :: [String] -> Pandoc -> Pandoc
-pandocFilterWithArgs (arg1 : arg2 : rest) = 
-    (walk codifiedMath)
-    . (argFilter arg1 arg2)
-    . (walk dropNotes)
-    . (topDownBlockListFilter split)
-    . (walk maskMath)
-    . (walk sectionToSlides)
-    . insertHeaders
-    . (walk (concatMap dropStrayHRule))
-    . (walk (concatMap dropEmptyList))
-    . (topDownBlockFilter itemize)
-pandocFilterWithArgs [] = pandocFilter
+relatePath :: Path Abs Dir -> Path Abs File -> FilePath
+relatePath directory file
+    | (Prelude.length dirPathSuffix) < (Prelude.length dirPathList) = foldl (</>) "" relativePathList
+    | otherwise = toFilePath file
+    where
+        dirPathList = splitDirectories (toFilePath directory)
+        filePathList = splitDirectories (toFilePath file)
+        (dirPathSuffix, filePathSuffix) = dropCommon dirPathList filePathList
+        relativePathList = (map (\x -> "..") dirPathSuffix) ++ filePathSuffix
+
+
+resolveImagePaths :: Path Abs Dir -> Inline -> IO Inline
+resolveImagePaths outputDir (Image attr alttext (target, title)) = do
+    absoluteImagePath <- resolveFile' (unpack target)
+    traceM (show absoluteImagePath)
+    traceM (show outputDir)
+    traceM (show (relatePath outputDir absoluteImagePath))
+    case stripProperPrefix outputDir absoluteImagePath of
+        Just newRelativeImagePath ->
+            return (Image attr alttext (((pack . toFilePath) newRelativeImagePath), title))
+        Nothing -> do
+            traceM "image not found"
+            return (Image attr alttext (target, title))
+resolveImagePaths _ inline = return inline
+
+pandocFilterWithArgs :: [String] -> Pandoc -> IO Pandoc
+pandocFilterWithArgs args (Pandoc meta blocks) = 
+    case args of
+        (inputPathStr : outputPathStr : _) -> do
+            inputPathAbs <- resolveDir' inputPathStr
+            outputPathAbs <- resolveDir' outputPathStr
+            replacedPathsBlocks <- walkM (resolveImagePaths outputPathAbs) blocks
+            let combinedFilter =
+                    walk codifiedMath
+                    . walk dropNotes
+                    . topDownBlockListFilter split
+                    . walk maskMath
+                    . walk sectionToSlides
+                    . insertHeaders
+                    . walk (concatMap dropStrayHRule)
+                    . walk (concatMap dropEmptyList)
+                    . topDownBlockFilter itemize
+            return (combinedFilter (Pandoc meta replacedPathsBlocks))
+        _ -> error "incorrect arguments"
 
 pandocFilter :: Pandoc -> Pandoc
 pandocFilter =

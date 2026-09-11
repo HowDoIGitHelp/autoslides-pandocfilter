@@ -75,6 +75,13 @@ fun headsortails(n: Int) {
         results.add("Heads")
     else
         results.add("Tails")
+```
+
+---
+
+# Pure functions
+
+``` kotlin
     return results
 }
 ```
@@ -170,5 +177,11 @@ x = 1;
 
   - 213123
   - 2312313
+
+---
+
+# Testnestedlist
+
+![State changes](../mermaid_diagrams/state_changes.png)
 
 ---

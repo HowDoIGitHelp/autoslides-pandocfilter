@@ -64,7 +64,7 @@ executable paragraph-filter
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.20.2.0, pandoc-types, text, pcre2, regex-tdfa
+    build-depends:    base ^>=4.20.2.0, pandoc-types, text, pcre2, regex-tdfa, path, path-io, filepath
 
     -- Directories containing source files.
     hs-source-dirs:   app

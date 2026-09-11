@@ -130,3 +130,5 @@ x = 1;
 
   - 213123
   - 2312313
+
+![State changes](../mermaid_diagrams/state_changes.png)
