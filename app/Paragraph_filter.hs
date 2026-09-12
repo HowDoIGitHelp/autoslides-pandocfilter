@@ -1,14 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Text.Pandoc.JSON
-import Text.Pandoc.Builder
 import Text.Pandoc.Walk (walk, walkM)
 import Data.Text (Text, length, pack, unpack, splitOn, isPrefixOf, isSuffixOf, intercalate, stripPrefix, stripSuffix)
 import Text.Regex.Pcre2 (gsub, match, sub)
 import Debug.Trace (trace, traceM)
 import Data.Maybe (fromMaybe, listToMaybe)
-import Path (Path, Abs, Dir, Rel, File, toFilePath, stripProperPrefix)
-import Path.IO (resolveDir', resolveFile')
+import Path (Path, Abs, Dir, File, toFilePath)
+import Path.IO (resolveDir', resolveFile)
 import System.FilePath (splitDirectories, (</>))
 
 slidelines :: Int
@@ -367,30 +366,26 @@ relatePath directory file
         dirPathList = splitDirectories (toFilePath directory)
         filePathList = splitDirectories (toFilePath file)
         (dirPathSuffix, filePathSuffix) = dropCommon dirPathList filePathList
-        relativePathList = (map (\x -> "..") dirPathSuffix) ++ filePathSuffix
+        relativePathList = (map (\_ -> "..") dirPathSuffix) ++ filePathSuffix
 
 
-resolveImagePaths :: Path Abs Dir -> Inline -> IO Inline
-resolveImagePaths outputDir (Image attr alttext (target, title)) = do
-    absoluteImagePath <- resolveFile' (unpack target)
-    traceM (show absoluteImagePath)
-    traceM (show outputDir)
-    traceM (show (relatePath outputDir absoluteImagePath))
-    case stripProperPrefix outputDir absoluteImagePath of
-        Just newRelativeImagePath ->
-            return (Image attr alttext (((pack . toFilePath) newRelativeImagePath), title))
-        Nothing -> do
-            traceM "image not found"
-            return (Image attr alttext (target, title))
-resolveImagePaths _ inline = return inline
+resolveImagePaths :: Path Abs Dir -> Path Abs Dir -> Inline -> IO Inline
+resolveImagePaths inputDir outputDir (Image attr alttext (target, title)) = do
+    absoluteImagePath <- resolveFile inputDir (unpack target)
+    -- traceM (show absoluteImagePath)
+    -- traceM (show outputDir)
+    -- traceM (show (relatePath outputDir absoluteImagePath))
+    let newPath = pack (relatePath outputDir absoluteImagePath)
+    return (Image attr alttext (newPath, title))
+resolveImagePaths _ _ inline = return inline
 
 pandocFilterWithArgs :: [String] -> Pandoc -> IO Pandoc
-pandocFilterWithArgs args (Pandoc meta blocks) = 
+pandocFilterWithArgs args (Pandoc meta blocks) =
     case args of
         (inputPathStr : outputPathStr : _) -> do
             inputPathAbs <- resolveDir' inputPathStr
             outputPathAbs <- resolveDir' outputPathStr
-            replacedPathsBlocks <- walkM (resolveImagePaths outputPathAbs) blocks
+            replacedPathsBlocks <- walkM (resolveImagePaths inputPathAbs outputPathAbs) blocks
             let combinedFilter =
                     walk codifiedMath
                     . walk dropNotes
@@ -402,19 +397,7 @@ pandocFilterWithArgs args (Pandoc meta blocks) =
                     . walk (concatMap dropEmptyList)
                     . topDownBlockFilter itemize
             return (combinedFilter (Pandoc meta replacedPathsBlocks))
-        _ -> error "incorrect arguments"
-
-pandocFilter :: Pandoc -> Pandoc
-pandocFilter =
-    (walk codifiedMath)
-    . (walk dropNotes)
-    . (topDownBlockListFilter split)
-    . (walk maskMath)
-    . (walk sectionToSlides)
-    . insertHeaders
-    . (walk (concatMap dropStrayHRule))
-    . (walk (concatMap dropEmptyList))
-    . (topDownBlockFilter itemize)
+        _ -> error "incorrect arguments please provide input path and output path"
 
 main :: IO ()
 main = toJSONFilter pandocFilterWithArgs

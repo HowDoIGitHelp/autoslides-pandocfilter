@@ -1,134 +1,186 @@
-# A Stateless Paradigm
+# Imperative Programming Paradigm
 
-## Functional purity and the absence of states
+## Introduction
 
-One of the most distinguishing aspects of functional programming and the declarative family of languages is its philosophy of statelessness.
-A programmer primarily exposed to mutable imperative programming languages will find that the concept of state is natural and maybe even inevitable.
-Functional paradigm challenges this concept and offers a much safer and mathematically intuitive philosophy.
-In the perspective of functional programming, there is no state, and everything is immutable.
+Imperative programming has turned out to be the *natural* paradigm of programming languages.
+The members of the imperative programming family have been dominating the market share of programming languages throughout the years with titans like BASIC, Pascal, C, Java and many more. 
 
-### Pure functions
+## Learning Outcomes
 
-To understand the functional programming perspective, we have to take a step away from the imperative programming definition of a function.
-Let's go back to the definition of a function in mathematics.
+At the end of this discussion you should be able to
 
-Across several, mathematical disciplines a function means the same thing.
-Consider two sets $A$ and $B$.
-We can define a function as the *mapping* between the elements of $A$ and $B$.
-The elements of $A$ and $B$ can be anything, they can be numbers, which shows us how a function can be represented by a formula or a graph.
-The elements of $A$ and $B$ can be matrices and vectors, which defines a function as a transformation between two vector spaces.
-On the higher level perspective of category theory, functions are *morphisms* between objects of a given category.
+1. Explain how imperative programming became the natural paradigm
+2. Explain the concept of state in the context of imperative programming
+3. Explain how the assignment statement enables the progression of states
+4. Create structured programs to represent algorithms
+5. Differentiate the subparadigms procedural programming and object-oriented programming
 
-$$
-f:(A\to B)
-$$
+### Quick Note on Imperative Programming and Procedural Programming
 
-If you remember functions from discrete math, functions at its most basic form looks like the one above.
+People usually use the terms imperative programming and procedural programming interchangeably.
+Procedural programming is a subparadigm of imperative programming family, but some people refer to procedural programming as imperative programming.
+That's because other imperative paradigms like object-oriented programming is derived from procedural programming.
+You can think procedural programming as the ancestor if other imperative paradigms.
 
-Functions in functional programming languages like Haskell are (arguably) the closest computer representation of a mathematical function.
-We call these functions, **pure functions**.
+In this lecture I refer to imperative paradigm as a whole, but I will focus on the main ideas that are common between other imperative paradigms.
+Ideas from object-oriented programming paradigm can be found on a separate lecture.
 
-They differ from your standard C function because the definition inside pure functions are only instructions on how to produce a result based on the parameters.
-To fully understand this concept here are some examples of impure functions
+## Popularity of the Imperative Paradigm
+
+Imperative programming has turned out to be the *natural* paradigm of programming languages.
+The members of the imperative programming family have been dominating the market share of programming languages throughout the years with titans like BASIC, Pascal, C, Java and many more.
+
+If you think about it, this is not that surprising.
+This paradigm's dominance could be attributed to most computer scientists’ preference towards **pragmatic** and **efficient** programming languages.
+Especially since the most straightforward way of communicating to computer hardware is through the explicit manipulation of CPU memory and registers.
+
+If you want the computer to do something for you, then you *communicate* to the computer that you want this and that to be done.
+And if you manage to give the computer correct and comprehensive **instructions** then you'll end up getting what you want.
+
+If we rewind back to the dawn of programming languages you'll see that early programming languages were built to **communicate to computer hardware**.
+As a result of this, programming languages naturally adopted syntax with **imperative** moods.
+
+Assembly programs for example was mostly built from sequences of executable instructions which was patterned from imperative statements from natural language.
+
+```assembly
+INC ITER
+MOV AH,7
+ADD AH, AL
+```
+
+For example, the assembly instruction `INC ITER`, tells the computer to increment the memory variable called `ITER`.
+The instruction `MOV AH, 7`, tells the computer to move the value 7 to the `AH` register.
+The instruction `ADD AH, AL` tells the computer to add the contents of the `AH` register to the `AL` register.
+
+As time went by, newer *higher level programming languages* emerged (higher level meaning farther from hardware and closer to human language) like Basic, Pascal, and C.
+The syntax of these programming languages were written as **abstractions** of hardware code.
+Although programs written in these languages became more human-readable compared to its predecessors, these newer languages retained their imperative tones and mechanisms.
+This progression meant that higher level programming languages built atop of imperative languages naturally adopted the **imperative paradigm** as well.
+Java, Python, and C++ for example which were all written in C, followed this progression, thus establishing the imperative family as the dominant paradigm in programming language design.
+
+### The STATE
+
+The existence of an explicit state is the foundation of imperative programming.
+The **state** of a program or a process on a given instance is the snapshot of its immediate relevant environment and context.
+The state of your CPU on a given instance for example will refer to the values found in the *registers and relevant memory*.
+On a specific process the state will refer to the values inside the *memory addresses* it resides in.
+
+On a computer program the state can refer the conceptual set of variable values related to the program's runtime on some given instance.
+Let's use this program as an example:
 
 ```c
-int square(int x){
-	addToExternalLogger("calculating square");
-    return x*x;
-}
+int x = 3
+int y = 4
+x = x + y
 ```
 
-The impurity in this function is the line where the function writes to some external logger, `addToExternalLogger("calculating square");`.
-A function can only be pure if the result of the function can be fully determined by its parameter.
-The only parameter here is `x`.
-Invoking this square function with the same parameter value does not do the same thing.
-The effect of changing the logger is dependent on the previous state of the external logger.
-The effect on the logger is what we call a **side effect** of the `square` function.
-It is a side effect since this line of code modifies values outside boundaries of the function.
+At the start of runtime, the state of this program would be (*for all intents and purposes*) empty, since there are no relevant variables declared at this point.
+After executing the first line of code, the state of the program would look something like this:
 
-```c
-int* increaseArray(int *a, int size){
-    for(int i = 0; i < size; i++)
-        a[i] = a[i]+1;
-}
+| variable | value |
+| :------: | :---: |
+|   `x`    |   3   |
+
+One integer variable named `x` with the value 3.
+After the next line of code a new variable is introduced and immediately assigned with the value 4 so the state of the program at this instance will look like this:
+
+| variable | value |
+| :------: | :---: |
+|   `x`    |   3   |
+|   `y`    |   4   |
+
+And at the last line, the value of `x` is updated by adding the value of `y`, so the final state of this program will look like this:
+
+| variable | value |
+| :------: | :---: |
+|   `x`    |   7   |
+|   `y`    |   4   |
+
+You can inspect the state of a program using *debugging tools* like `gdb` for gcc.
+To enable debugging using `gdb`, you need to add the appropriate debug flag (`-g`) during compilation.
+
+```bash
+gcc -g program.c -o executable
 ```
 
-A pass by address/reference function which changes the value of a parameter will automatically be an impure function since changing the value of `a` is a **mutation**, which is a side effect.
-
-
-```kotlin
-fun headsortails(n: Int) {
-    val results: MutableList<String> = mutableListOf()
-	if ((0..1).random() == 0)
-		results.add("Heads")
-	else
-        results.add("Tails")
-    return results
-}
+```bash
+gdb ./executable
 ```
 
-This function is also impure because the return value is not dependent on the parameters alone.
-The return value will be dependent on the randomization seed which is something outside the parameters of the function.
+##  Assignment Statement
 
-A pure function must satisfy these two:
+Another important construct of the imperative programming paradigm is the **assignment statement**.
+Assignment statements and the concept of state are very related to each other.
 
-1. A pure function has no side effects
-2. A pure functions output must be dependent on the inputs alone[^function]
+Assignment statements allow your program to *mutate* the values of your variables.
+Mutation in the context of programming is a fancy term that basically means change[^mutation].
+And as we learned earlier, *changes to the context* of a program, which includes variables, creates states.
+Therefore, every **assignment statement**, corresponds to **new states** of a for the program.
 
-[^function]: In fact if $f(a)=b$ and $f(a)=c$ where $b\neq c$, then $f$ is not a function at all
+[^mutation]: When we say "variable mutation" we generally refer to in-place modification. This means that the value is not merely replaced by another value from a different memory address.
 
-A good way to test if a function is pure is if you can (theoretically) create an infinitely long *lookup table* such that, looking up the value for a specific input is perfectly identical to calling the function with the same input.
-And if you think about it this is the essence of a function.
-Functions are just of mappings between the domain and the range.
+Assignment statements are usually executed through the use of the **“`=`”** operator (some languages like Pascal use “`:=`” instead).
+Although it borrows the equality operator from math, assignment operators behave very differently from an equality statement.
+Instead of communicating some kind proposition[^equality] that says two values are equal, the assignment statement has an **imperative mood**.
+Mutation is introduced once you perform an assignment to `a` again, signifying a change in the value of `a`.
 
-For example, a `square :: Int -> Int` function can be replaced by such look-up table:
+The closest corresponding mathematical construct to an assignment statement is the *let statement*.
+A statement in math such as "let x be equal to 3", has an **imperative mood**.
+But unlike an assignment statement which can change the value of a variable any number of times, a let statement can only set the value of a variable once.
 
-| Domain (`x :: Int`) | Range (`(square x) :: Int`) |
-|:---:|:---:|
-| $\vdots$ | $\vdots$ |
-| $-2$     |  $4$     |
-| $-1$     |  $1$     |
-|  $0$     |  $0$     |
-|  $1$     |  $1$     |
-|  $2$     |  $4$     |
-| $\vdots$ | $\vdots$ |
+[^equality]: An equality a=b in math declares that some `a` is `b`, while an assignment operator `a=b` commands that `a`'s value is now the same as `b`.
 
-Compare this with the `headsortails()` function in kotlin, which cannot be represented by a lookup table, since the same input can result to different output.
-
-| Domain (`n :: Int`) | Range (`(headsortails(n)) :: MutableList<String>`) |
-|:---:|:---:|
-| $0$      |  `[]`     |
-| $1$      |  `["Heads"]`     |
-| $1$      |  `["Tails"]`     |
-| $2$      |  `["Heads", "Heads"]`     |
-| $2$      |  `["Heads", "Tails]"`     |
-| $\vdots$ | $\vdots$ |
-
-### Bindings vs Assignment and Referential Transparency
-
-One of the defining features of imperative programming is the assignment statement.
-It enables the program to advance to a new state.
-Purely functional programming languages like Haskell *do not have assignment statements*.
-Therefore, it lacks the mechanism to mutate anything.
-Using the "`=`" operator (which signals an assignment statement in imperative languages) in functional languages *binds* the value on the right-hand side to the left-hand side.
-This mechanism is conceptually different from an assignment operation in C.
-It is perfectly fine to do the following in C:
-
-```C
-int x = 0;
-x = 1;
-``` 
-
-### Testnestedlist
-
-- weqwe
-- 12312
-- 3123123
-- 231231
-- asdasd
-- sdada
-
-  - 213123
-  - 2312313
+For every assignment statement instructed to the computer corresponds to changes to programs state.
 
 ![State changes](../mermaid_diagrams/state_changes.png)
+
+The state of a program changes for every individual mutation of a variable.
+And you can compare the difference between the before and after of a specific assignment by comparing the **before-assignment** state and the **after-assignment state**.
+The *progression* from one state to another characterizes the effect of an assignment.
+
+This is the important takeaway that you need to remember.
+Imperative programming is characterized by **imperative statements**.
+Statements that tell the computer what to do.
+The most important type of these statements is the **assignment statement**.
+An assignment statement's effect to your computer is characterized by the *progression* from one state to another state.
+
+If boil down imperative programs at its most abstract form, it is simply a *combination of assignment statements*.
+If arranged in the correct way, a given problem (*initial state*) can progress through multiple states until it reaches the solution (*final state*).
+
+## Structured Program Theorem
+
+Creating meaningful imperative programs is done by applying the **Bohm-Jacopini Theorem**, also known as the **Structured Program Theorem** [@bohm_flow_1966].
+This theorem was one of the theoretical frameworks proposed to characterize imperative programming.
+
+The theorem describes a formalism of a class called **control flow graphs** which are capable of representing any computable function.
+These control flow graphs are actually something you are intimately familiar of.
+It is known to you as the trusty old **flow chart**.
+Any control flow graph can be created by combining subprograms in three specific ways.
+A subprogram is a recursive unit of control flow graphs.
+A subprogram can be a *single assignment statement*, or it can be a *combination* of more than one subprogram.
+Here are the three ways to combine subprograms:
+
+1. Executing one subprogram, and then another subprogram (sequence)
+2. Executing one of two subprograms according to the value of a boolean (selection)
+3. Repeatedly executing a subprogram as long as a boolean expression is true (iteration)
+
+![Flowcharts](../mermaid_diagrams/flowchart.png)
+
+The constructs described by this formalism became the natural architecture for programming language designers.
+This is the reason why CS students like you are introduced to programming using control flow graphs or flow charts.
+This is also the reason why programming languages like Pascal, C, Java and their derivatives are designed the way they are.
+
+![Example Program](../mermaid_diagrams/modulo.png)
+
+## Subparadigms under the Imperative family
+
+### Procedural programming
+
+Programming languages like Fortran, ALGOL, BASIC, and C fall under the **procedural paradigm**.
+Languages under this paradigm simplify a complex system by subdividing a program into different **procedures** or functions.
+
+### Object-oriented programming
+
+Object-oriented programming focuses on modelling a system based on the real world ontology of **objects**.
+It uses an expressive type system to program the interactions within a system.
+Most modern programming languages, like C++, Python, Java, etc., have some object-oriented programming features.
