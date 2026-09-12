@@ -28,6 +28,7 @@ isNote :: Inline -> Bool
 isNote (Note _) = True
 isNote _ = False
 
+-- remove notes from para and plain blocks
 dropNotes :: Block -> Block
 dropNotes (Para inlines) = Para (filter (not . isNote) inlines)
 dropNotes (Plain inlines) = Plain (filter (not . isNote) inlines)
@@ -328,6 +329,7 @@ splitTable block = [block]
 codeLineHeight :: Text -> Int
 codeLineHeight _ = 1
 
+-- splits code blocks int lines of code
 splitCode :: Block -> [Block]
 splitCode (CodeBlock (_, classes, kvs) codeBlock) =
     map (\x -> (CodeBlock ("", classes, kvs) x)) binnedCode
@@ -354,10 +356,13 @@ split (header@(Header _ _ _) : block : (RawBlock (Format "markdown") "---") : re
 split [] = []
 split _ = error "unsupported split"
 
+-- drop common prefix from a list
 dropCommon :: Eq a => [a] -> [a] -> ([a], [a])
 dropCommon (x:xs) (y:ys) | x == y = dropCommon xs ys
 dropCommon a b = (a, b)
 
+-- convert absolute file path to relative file path based on some
+-- absoulte directory path
 relatePath :: Path Abs Dir -> Path Abs File -> FilePath
 relatePath directory file
     | (Prelude.length dirPathSuffix) < (Prelude.length dirPathList) = foldl (</>) "" relativePathList
@@ -368,7 +373,8 @@ relatePath directory file
         (dirPathSuffix, filePathSuffix) = dropCommon dirPathList filePathList
         relativePathList = (map (\_ -> "..") dirPathSuffix) ++ filePathSuffix
 
-
+-- replace image targets with new paths resolved from 
+-- output directory
 resolveImagePaths :: Path Abs Dir -> Path Abs Dir -> Inline -> IO Inline
 resolveImagePaths inputDir outputDir (Image attr alttext (target, title)) = do
     absoluteImagePath <- resolveFile inputDir (unpack target)
@@ -379,6 +385,8 @@ resolveImagePaths inputDir outputDir (Image attr alttext (target, title)) = do
     return (Image attr alttext (newPath, title))
 resolveImagePaths _ _ inline = return inline
 
+-- the main pandoc filter, returns IO Pandoc because
+-- of absolute path resolution
 pandocFilterWithArgs :: [String] -> Pandoc -> IO Pandoc
 pandocFilterWithArgs args (Pandoc meta blocks) =
     case args of
