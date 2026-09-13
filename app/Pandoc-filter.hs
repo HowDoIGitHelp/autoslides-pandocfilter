@@ -246,11 +246,34 @@ binSplit (y:ys) binSize sizeof = balanceLast (go ys binSize sizeof [[y]])
                 b = last binList
                 ib = init binList
 
--- splits a BulletList block into multiple bulletlists
+
+
+-- change the numbering of an OrderedList
+renumberedList :: Int -> Block -> Block
+renumberedList newStart (OrderedList (_, numbering, suffix) items) =
+    OrderedList (newStart, numbering, suffix) items
+renumberedList _ block = block
+
+-- change the numbering of a list of ordered lists so that
+-- numbering continues from element to element
+renumberedLists :: [Block] -> [Block]
+renumberedLists (lists@((OrderedList (startNum, _, _) _) : _)) =
+    go startNum lists
+    where
+        go newStart (list'@(OrderedList (_, _, _) items) : rest) =
+            (renumberedList newStart list') : (go nextNumber rest)
+            where nextNumber = newStart + (Prelude.length items)
+        go newStart (block : rest) = block : (go newStart rest)
+        go _ [] = []
+renumberedLists (block : rest) = block : (renumberedLists rest)
+renumberedLists [] = []
+
+-- splits a list blocks into multiple lists
 -- based on max slidelines
 splitList :: Block -> [Block]
 splitList (BulletList items) = map (\x -> BulletList x) (binSplit items slidelines blockListHeight)
-splitList (OrderedList prefix items) = map (\x -> OrderedList prefix x) (binSplit items slidelines blockListHeight)
+splitList (OrderedList prefix items) =
+    renumberedLists (map (\x -> OrderedList prefix x) (binSplit items slidelines blockListHeight))
 splitList block = [block]
 
 -- dropEmpty :: [Block] -> [Block]

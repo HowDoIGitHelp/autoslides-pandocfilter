@@ -13,6 +13,23 @@ class: center, middle
 
 # Satisfiability
 
+i.  one
+ii. two
+iii. three
+iv. four
+
+---
+
+# Satisfiability
+
+v.  five
+vi. six
+vii. seven
+
+---
+
+# Satisfiability
+
 - A boolean expression is said to be **satisfiable** if there exists an
   assignment of truth values (either TRUE or FALSE) that evaluates the
   entire formula to TRUE.

@@ -10,6 +10,14 @@ To introduce these concepts, we will first talk about the satisfiability problem
 
 ### Satisfiability
 
+i. one
+ii. two
+iii. three
+iv. four
+v. five
+vi. six
+vii. seven
+
 A boolean expression is said to be **satisfiable** if there exists an assignment of truth values (either TRUE or FALSE) that evaluates the entire formula to TRUE.
 A **boolean expression**, is an expression that uses only boolean values, variables or boolean operations.
 
