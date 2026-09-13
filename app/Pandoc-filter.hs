@@ -1,8 +1,21 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, PatternSynonyms #-}
 
 import Text.Pandoc.JSON
 import Text.Pandoc.Walk (walk, walkM)
-import Data.Text (Text, length, pack, unpack, splitOn, isPrefixOf, isSuffixOf, intercalate, stripPrefix, stripSuffix)
+import Data.Text
+    ( Text
+    , length
+    , pack
+    , unpack
+    , splitOn
+    , isPrefixOf
+    , isSuffixOf
+    , intercalate
+    , stripPrefix
+    , stripSuffix
+    , replace
+    , stripStart
+    )
 import Text.Regex.Pcre2 (gsub, match, sub)
 -- import Debug.Trace (trace, traceM)
 import Data.Maybe (fromMaybe, listToMaybe)
@@ -16,6 +29,12 @@ slidelines = 6
 
 linewidth :: Int
 linewidth = 100
+
+pattern SlideSep :: Block
+pattern SlideSep <- RawBlock (Format "markdown") "---"
+
+slideSep :: Block
+slideSep = RawBlock (Format "markdown") "---"
 
 isSoftBreak :: Inline -> Bool
 isSoftBreak SoftBreak = True
@@ -144,10 +163,10 @@ insertHeaders (Pandoc meta blocks) = (Pandoc meta (foldl (++) [] (combineHeaders
 
 -- add slide separators "---" in bewtween headers 
 sectionToSlides :: [Block] -> [Block]
-sectionToSlides (header@(Header _ _ _) : nonHeader : rest) | not (isHeader nonHeader) = 
-    [header, nonHeader, (RawBlock (Format "markdown") "---")] ++ sectionToSlides rest
 sectionToSlides (header1@(Header _ _ _) : header2@(Header _ _ _) : rest) =
-   [header1, (RawBlock (Format "markdown") "---")] ++ (sectionToSlides (header2 : rest))
+   [header1, slideSep] ++ (sectionToSlides (header2 : rest))
+sectionToSlides (header@(Header _ _ _) : nonHeader : rest) =
+    [header, nonHeader, slideSep] ++ sectionToSlides rest
 sectionToSlides (block : rest) = block : sectionToSlides rest
 sectionToSlides [] = []
 
@@ -241,20 +260,20 @@ splitList block = [block]
 
 -- this function is used to mask multiline environments with {{<env>}}
 maskedMultilines :: String -> Text -> (Text, [Text])
-maskedMultilines env mathBlock = (replacedBlock, matches) 
+maskedMultilines env mathBlock = (replacedBlock, matches)
     where
-        pattern = pack ("(?s)\\\\begin\\{" ++ env ++ "\\}.*?\\\\end\\{" ++ env ++ "\\}") :: Text
+        rePattern = pack ("(?s)\\\\begin\\{" ++ env ++ "\\}.*?\\\\end\\{" ++ env ++ "\\}") :: Text
         replacement = pack ("{{" ++ env ++ "}}") :: Text
-        matches = match pattern mathBlock :: [Text]
-        replacedBlock = gsub pattern replacement mathBlock
+        matches = match rePattern mathBlock :: [Text]
+        replacedBlock = gsub rePattern replacement mathBlock
 
 -- replaces latex newlines with {{nl}}
 maskNewlines :: Text -> Text
 maskNewlines mathBlock = replacedBlock
     where
-        pattern = pack "\\\\\\\\"
+        rePattern = pack "\\\\\\\\"
         replacement = pack "{{nl}}"
-        replacedBlock = gsub pattern replacement mathBlock
+        replacedBlock = gsub rePattern replacement mathBlock
 
 envs :: [String]
 envs = ["bmatrix", "matrix"]
@@ -286,23 +305,30 @@ multiRecoverEnvs (e:es) (m:ms) mathBlock = multiRecoverEnvs es ms (recoverEnvs e
 -- restores masked envs based on a list of matches
 recoverEnvs :: String -> [Text] -> Text -> Text
 recoverEnvs _ [] mathBlock = mathBlock
-recoverEnvs env (m:ms) mathBlock = recoverEnvs env ms (sub pattern m mathBlock)
-    where pattern = pack ("\\{\\{" ++ env ++ "\\}\\}")
+recoverEnvs env (m:ms) mathBlock =
+    recoverEnvs env ms (sub rePattern m mathBlock)
+    where rePattern = pack ("\\{\\{" ++ env ++ "\\}\\}")
 
 -- checks if the mathblock is surrounded by some latex environment env
 -- used for alignment
-isEnvMath :: Text -> String -> Bool
-isEnvMath mathBlock env =
-    (isPrefixOf (pack ("\n\\begin{" ++ env ++ "}\n")) mathBlock) && (Data.Text.isSuffixOf (pack ("\n\\end{" ++ env ++ "}\n")) mathBlock)
+isEnvMath :: String -> Text -> Bool
+isEnvMath env mathBlock =
+    (isPrefixOf (pack ("\n\\begin{" ++ env ++ "}\n")) mathBlock)
+        && (Data.Text.isSuffixOf (pack ("\n\\end{" ++ env ++ "}\n")) mathBlock)
 
 -- surrounds the mathblock with a latex environment env
-envMath :: Text -> String -> Text
-envMath mathBlock env = (pack ("\n\\begin{" ++ env ++ "}\n")) <> mathBlock <> (pack ("\n\\end{" ++ env ++ "}\n"))
+envMath :: String -> Text -> Text
+envMath env mathBlock =
+    (pack ("\n\\begin{" ++ env ++ "}\n"))
+        <> mathBlock
+        <> (pack ("\n\\end{" ++ env ++ "}\n"))
 
 -- strips a latex environment env from a mathblock
-stripEnvMath :: Text -> String -> Text
-stripEnvMath mathBlock env = fromMaybe strippedPrefix (stripSuffix (pack ("\n\\end{" ++ env ++ "}\n")) strippedPrefix)
-    where strippedPrefix = fromMaybe mathBlock (stripPrefix (pack ("\n\\begin{" ++ env ++ "}\n")) mathBlock)
+stripEnvMath :: String -> Text -> Text
+stripEnvMath env mathBlock =
+    fromMaybe strippedPrefix (stripSuffix (pack ("\n\\end{" ++ env ++ "}\n")) strippedPrefix)
+    where
+        strippedPrefix = fromMaybe mathBlock (stripPrefix (pack ("\n\\begin{" ++ env ++ "}\n")) mathBlock)
 
 -- splits a mathBlock with the masked newline "{{nl}}"
 mathLines :: Text -> [Text]
@@ -314,20 +340,45 @@ mathLineHeight _ = 1
 
 -- removes empty lines from the mathblock
 cleanUpMathBlock :: Text -> Text
-cleanUpMathBlock mathBlock = gsub pattern replacement mathBlock
+cleanUpMathBlock mathBlock = gsub rePattern replacement mathBlock
     where
-        pattern = (pack "\\n\\n") :: Text
+        rePattern = (pack "\\n\\n") :: Text
         replacement = (pack "\n") :: Text
+
+-- strips whitespace (indentation) from display math blocks
+stripIndentMath :: Block -> Block
+stripIndentMath (Para [Math DisplayMath mathBlock]) =
+    Para [Math DisplayMath cleanBlock]
+    where
+        splitLines = splitOn (pack "\n") mathBlock
+        cleanBlock = intercalate "\n" (map stripStart splitLines)
+stripIndentMath block = block
+
+replaceAlignment :: String -> Text -> Text
+replaceAlignment env text =
+    ((replace (pack ("\\begin{" ++ env ++ "}")) (pack "\\begin{aligned}"))
+        . (replace (pack ("\\end{" ++ env ++ "}")) (pack "\\end{aligned}"))) text
+
+alignEnvs :: [String]
+alignEnvs = ["align", "align*"]
+
+normalizedAlignment :: Block -> Block
+normalizedAlignment (Para [Math DisplayMath mathBlock]) =
+    Para [Math DisplayMath (composedReplace mathBlock)]
+    where
+        composedReplace = foldl (.) id (map replaceAlignment alignEnvs)
+normalizedAlignment block = block
 
 -- splits a mathblock into bins
 splitMath :: Block -> [Block]
-splitMath (Para [Math DisplayMath mathBlock]) = (map (\x -> (Para [Math DisplayMath ((cleanUpMathBlock . alignment) x)])) binnedBlocks)
+splitMath (Para [Math DisplayMath mathBlock]) =
+    map (\x -> (Para [Math DisplayMath ((cleanUpMathBlock . alignment) x)])) binnedBlocks
     where
-        strippedEnv = stripEnvMath mathBlock "aligned"
+        strippedEnv = stripEnvMath "aligned" mathBlock
         mLines = mathLines strippedEnv
         binnedLines = (binSplit mLines slidelines mathLineHeight)
         binnedBlocks = map (intercalate "\\\\") binnedLines
-        alignment = if (isEnvMath mathBlock "aligned") then (\x -> envMath x "aligned") else id
+        alignment = if (isEnvMath "aligned" mathBlock) then (envMath "aligned") else id
 splitMath block = [block]
 
 -- returns the height of a row
@@ -343,7 +394,8 @@ splitTableBody (TableBody attr rowHeadColumns headerRows rows) =
 -- splits a table's tablebody component
 splitTable :: Block -> [Block]
 splitTable (Table attr caption colspec header (body:_) foot) = tableList
-    where tableList = (map (\x -> Table attr caption colspec header [x] foot) (splitTableBody body))
+    where
+        tableList = (map (\x -> Table attr caption colspec header [x] foot) (splitTableBody body))
 splitTable block = [block]
 
 codeLineHeight :: Text -> Int
@@ -361,20 +413,20 @@ splitCode block = [block]
 
 -- splits blocks into multiple slides
 split :: [Block] -> [Block]
-split (header@(Header _ _ _) : (RawBlock (Format "markdown") "---") : rest) =
-    [header, (RawBlock (Format "markdown") "---")] ++ split rest
-split (header@(Header _ _ _) : bulletList@(BulletList _) : (RawBlock (Format "markdown") "---") : rest) = 
-    (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitList bulletList)) ++ (split rest)
-split (header@(Header _ _ _) : orderedList@(OrderedList _ _) : (RawBlock (Format "markdown") "---") : rest) = 
-    (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitList orderedList)) ++ (split rest)
-split (header@(Header _ _ _) : displayMath@(Para [Math DisplayMath _]) : (RawBlock (Format "markdown") "---") : rest) = 
-    (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitMath displayMath)) ++ (split rest)
-split (header@(Header _ _ _) : table@(Table _ _ _ _ _ _) : (RawBlock (Format "markdown") "---") : rest) = 
-    (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitTable table)) ++ (split rest)
-split (header@(Header _ _ _) : code@(CodeBlock _ _) : (RawBlock (Format "markdown") "---") : rest) = 
-    (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitCode code)) ++ (split rest)
-split (header@(Header _ _ _) : block : (RawBlock (Format "markdown") "---") : rest) = 
-    [header, block, (RawBlock (Format "markdown") "---")] ++ (split rest)
+split (header@(Header _ _ _) : SlideSep : rest) =
+    [header, slideSep] ++ split rest
+split (header@(Header _ _ _) : bulletList@(BulletList _) : SlideSep : rest) = 
+    (concatMap (\x -> [header, x, slideSep]) (splitList bulletList)) ++ (split rest)
+split (header@(Header _ _ _) : orderedList@(OrderedList _ _) : SlideSep : rest) = 
+    (concatMap (\x -> [header, x, slideSep]) (splitList orderedList)) ++ (split rest)
+split (header@(Header _ _ _) : displayMath@(Para [Math DisplayMath _]) : SlideSep : rest) = 
+    (concatMap (\x -> [header, x, slideSep]) (splitMath displayMath)) ++ (split rest)
+split (header@(Header _ _ _) : table@(Table _ _ _ _ _ _) : SlideSep : rest) = 
+    (concatMap (\x -> [header, x, slideSep]) (splitTable table)) ++ (split rest)
+split (header@(Header _ _ _) : code@(CodeBlock _ _) : SlideSep : rest) = 
+    (concatMap (\x -> [header, x, slideSep]) (splitCode code)) ++ (split rest)
+split (header@(Header _ _ _) : block : SlideSep : rest) = 
+    [header, block, slideSep] ++ (split rest)
 split [] = []
 split _ = error "unsupported split"
 
@@ -407,31 +459,31 @@ resolveImagePaths inputDir outputDir (Image attr alttext (target, title)) = do
     return (Image attr alttext (newPath, title))
 resolveImagePaths _ _ inline = return inline
 
--- the main pandoc filter, returns IO Pandoc because
--- of absolute path resolution
-
 initSafe :: [a] -> Maybe [a]
 initSafe [] = Nothing
-initSafe [_] = Just []
-initSafe (x:xs) = fmap (x :) (initSafe xs)
+initSafe l = Just (init l)
 
 removeTrailingSep :: Pandoc -> Pandoc
-removeTrailingSep (Pandoc meta blocks) | (Data.List.isSuffixOf [(RawBlock (Format "markdown") "---")] blocks) =
+removeTrailingSep (Pandoc meta blocks) | (Data.List.isSuffixOf [slideSep] blocks) =
     Pandoc meta (fromMaybe [] (initSafe blocks))
 removeTrailingSep pandoc = pandoc
 
+-- the main pandoc filter, returns IO Pandoc because
+-- of absolute path resolution
 pandocFilterWithArgs :: [String] -> Pandoc -> IO Pandoc
 pandocFilterWithArgs args (Pandoc meta blocks) = do
     let combinedFilter =
             removeTrailingSep
             . walk dropNotes
             . topDownBlockListFilter split
-            . walk maskMath
-            . walk sectionToSlides
+            . topDownBlockFilter maskMath
+            . topDownBlockListFilter sectionToSlides
             . insertHeaders
             . walk (concatMap dropStrayHRule)
             . walk (concatMap dropEmptyList)
             . topDownBlockFilter itemize
+            . topDownBlockFilter normalizedAlignment
+            . topDownBlockFilter stripIndentMath
             . topDownBlockFilter softBreakParagraph
     case args of
         (inputPathStr : outputPathStr : _) -> do
