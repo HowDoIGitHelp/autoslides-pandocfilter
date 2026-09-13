@@ -5,7 +5,6 @@
 - It is a formalism based on *logical operations* and *quantification*.
 
 ---
-class: center, middle
 
 # Satisfiability and Horn Clauses
 
@@ -40,29 +39,29 @@ vii. seven
 
 # Satisfiability
 
-`$$
+$$
 p \lor q \lor r
-$$`
+$$
 
 ---
 
 # Satisfiability
 
-`$$
+$$
 p \land \neg p \land q
-$$`
+$$
 
 ---
 
 # Satisfiability
 
-`$$
+$$
 \begin{aligned}
 & (u \lor \neg v \lor w) \land \\
 & (\neg u \lor v \lor p) \land \\
 & (\neg u \lor p \lor r)
 \end{aligned}
-$$`
+$$
 
 ---
 
@@ -94,14 +93,14 @@ $$`
 
 # Horn Clauses
 
-`$$
+$$
 \begin{aligned}
 & (\neg p) \land \\
 & (\neg q \lor r) \land \\
 & (\neg r \lor \neg s \lor t) \land \\
 & (\neg s \lor \neg t)
 \end{aligned}
-$$`
+$$
 
 ---
 
@@ -115,7 +114,7 @@ $$`
 
 # Horn Clauses
 
-`$$
+$$
 \begin{aligned}
 & (\neg p) \land \\
 & (\neg q \lor r) \land \\
@@ -123,13 +122,13 @@ $$`
 & (\neg r \lor \neg s \lor t) \land \\
 & (\neg s \lor t)
 \end{aligned}
-$$`
+$$
 
 ---
 
 # Horn Clauses
 
-`$$
+$$
 \begin{aligned}
 & (\neg p) \land \\
 & (\neg q \lor r) \land \\
@@ -137,50 +136,50 @@ $$`
 & (\neg r \lor \bot \lor t) \land \\
 & (\bot \lor t)
 \end{aligned}
-$$`
+$$
 
 ---
 
 # Horn Clauses
 
-`$$
+$$
 \begin{aligned}
 & (\neg p) \land \\
 & (\neg q \lor r) \land \\
 & (\neg r \lor t) \land \\
 & (t)
 \end{aligned}
-$$`
+$$
 
 ---
 
 # Horn Clauses
 
-`$$
+$$
 \begin{aligned}
 & (\neg p) \land \\
 & (\neg q \lor r) \land \\
 & (\neg r \lor \top) \land \\
 & (\top)
 \end{aligned}
-$$`
+$$
 
 ---
 
 # Horn Clauses
 
-`$$
+$$
 \begin{aligned}
 & (\neg p) \land \\
 & (\neg q \lor r) \land \\
 \end{aligned}
-$$`
+$$
 
 ---
 
 # Horn Clauses
 
-`$$
+$$
 \begin{aligned}
 & (\neg p) \land \\
 & (\neg q \lor r) \land \\
@@ -188,13 +187,13 @@ $$`
 & (t) \land \\
 & (\neg s \lor \neg t)
 \end{aligned}
-$$`
+$$
 
 ---
 
 # Horn Clauses
 
-`$$
+$$
 \begin{aligned}
 & (\neg p) \land \\
 & (\neg q \lor r) \land \\
@@ -202,33 +201,33 @@ $$`
 & (t) \land \\
 & (\bot \lor \neg t)
 \end{aligned}
-$$`
+$$
 
 ---
 
 # Horn Clauses
 
-`$$
+$$
 \begin{aligned}
 & (\neg p) \land \\
 & (\neg q \lor r) \land \\
 & (t) \land \\
 & (\neg t)
 \end{aligned}
-$$`
+$$
 
 ---
 
 # Horn Clauses
 
-`$$
+$$
 \begin{aligned}
 & (\neg p) \land \\
 & (\neg q \lor r) \land \\
 & (\top) \land \\
 & (\bot)
 \end{aligned}
-$$`
+$$
 
 ---
 
@@ -241,20 +240,20 @@ $$`
 
 # Horn Clauses as Implications
 
-`$$
+$$
 \neg p \lor q \equiv p \to q
-$$`
+$$
 
 ---
 
 # Horn Clauses as Implications
 
-`$$
+$$
 \begin{aligned}
 \neg p_1 \lor \neg p_2 \lor \cdots \lor \neg p_n \lor q &\equiv \\
 (p_1 \land p_2 \land \cdots \land p_n) \to q
 \end{aligned}
-$$`
+$$
 
 ---
 
@@ -274,12 +273,12 @@ $$`
 
 # Horn Clauses as Implications
 
-`$$
+$$
 \begin{aligned}
 q & \equiv \bot \lor q\\
 & \equiv \top \to q
 \end{aligned}
-$$`
+$$
 
 ---
 
@@ -292,23 +291,23 @@ $$`
 
 # Horn Clauses as Implications
 
-`$$
+$$
 \begin{aligned}
 \neg p_1 \lor \neg p_2 \lor \cdots \lor \neg p_n & \equiv \\
 \neg p_1 \lor \neg p_2 \lor \cdots \lor \neg p_n \lor \bot & \equiv \\
 (p_1 \land p_2 \land \cdots \land p_n) \to \bot
 \end{aligned}
-$$`
+$$
 
 ---
 
 # Resolution
 
-`$$
+$$
 \begin{aligned}
 p_1 \lor p_2 \lor \cdots \lor r & \\
 q_1 \lor q_2 \lor \cdots \lor \neg r & \\
 \hline
 p_1 \lor p_2 \lor q_1 \lor q_2 \cdots \\
 \end{aligned}
-$$`
+$$

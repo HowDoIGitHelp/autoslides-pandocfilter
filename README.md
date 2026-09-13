@@ -5,6 +5,12 @@
 This pandoc filter converts markdown notes (written in plain prose) into summarized slides.
 The filter automatically splits long slides and resolves image target paths to new paths.
 
+## Basic Usage
+
+```bash
+pandoc test.md --filter md-slides -o outputs/output.md
+```
+
 ## Transformations
 
 ### Paragraph Blocks
@@ -44,8 +50,6 @@ Paragraphs with no headers will use the *most recent* headers as slide headers.
 - Like *this one*.
 - Paragraphs with no headers will use the *most recent* headers as slide
   headers.
-
----
 ```
 
 ### Splitting slides
