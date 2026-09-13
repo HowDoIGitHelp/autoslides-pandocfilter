@@ -4,11 +4,12 @@ import Text.Pandoc.JSON
 import Text.Pandoc.Walk (walk, walkM)
 import Data.Text (Text, length, pack, unpack, splitOn, isPrefixOf, isSuffixOf, intercalate, stripPrefix, stripSuffix)
 import Text.Regex.Pcre2 (gsub, match, sub)
-import Debug.Trace (trace, traceM)
+-- import Debug.Trace (trace, traceM)
 import Data.Maybe (fromMaybe, listToMaybe)
 import Path (Path, Abs, Dir, File, toFilePath)
 import Path.IO (resolveDir', resolveFile)
 import System.FilePath (splitDirectories, (</>))
+import Data.List (isSuffixOf)
 
 slidelines :: Int
 slidelines = 6
@@ -34,9 +35,6 @@ dropNotes (Para inlines) = Para (filter (not . isNote) inlines)
 dropNotes (Plain inlines) = Plain (filter (not . isNote) inlines)
 dropNotes block = block
 
-wrapEquation :: Text -> Text
-wrapEquation eq = "$$" <> eq <> "$$"
-
 -- wrapEquationAligned :: Text -> Text
 -- wrapEquationAligned eq = "\\begin{aligned}\n" <> eq <> "\n\\end{aligned}"
 
@@ -48,6 +46,21 @@ isImportant _ = False
 isImportantSentence :: [Inline] -> Bool
 isImportantSentence inlines = any isImportant inlines
 
+endsWithPunctuation :: Inline -> Bool
+endsWithPunctuation (Str inline) =
+    (Data.Text.isSuffixOf (pack ".") inline) || (Data.Text.isSuffixOf (pack "!") inline) || (Data.Text.isSuffixOf (pack "?") inline)
+endsWithPunctuation _ = False
+
+softBreakInlines :: [Inline] -> [Inline]
+softBreakInlines (inline : Space : rest) | endsWithPunctuation inline =
+    [inline, SoftBreak] ++ (softBreakInlines rest)
+softBreakInlines (inline : rest) = inline : (softBreakInlines rest)
+softBreakInlines [] = []
+
+softBreakParagraph :: Block -> Block
+softBreakParagraph (Para inlines) = Para (softBreakInlines inlines)
+softBreakParagraph block = block
+
 --replaces paragraphs with a bulletlist of only important sentences
 itemize :: Block -> Block
 itemize block@(OrderedList _ _) = block
@@ -55,7 +68,7 @@ itemize block@(BulletList _) = block
 itemize block@(Para [Math DisplayMath _]) = block
 itemize (Para inlines) = (BulletList (map (\x -> [Plain x]) importantItems))
     where
-        items = (listSplit isSoftBreak inlines)
+        items = listSplit isSoftBreak inlines
         importantItems = filter isImportantSentence items
 itemize block = block
 
@@ -64,11 +77,6 @@ topDownBlockFilter blockfilter (Pandoc meta blocks) = Pandoc meta (map blockfilt
 
 topDownBlockListFilter :: ([Block] -> [Block]) -> Pandoc -> Pandoc
 topDownBlockListFilter blocklistfilter (Pandoc meta blocks) = Pandoc meta (blocklistfilter blocks)
-
--- converts math blocks to code for mathjax integration
-codifiedMath :: Block -> Block
-codifiedMath (Para [Math DisplayMath eq]) = Para [Code ("", [], []) (wrapEquation eq)]
-codifiedMath block = block
 
 -- removes empty bulletlists
 dropEmptyList :: Block -> [Block]
@@ -189,13 +197,26 @@ blockListHeight blocks = sum (map componentHeight blocks)
 -- heightFilter (BulletList items) = BulletList (map ((\x -> [Plain [Str (pack (show x))]]) . blockListHeight) items)
 -- heightFilter block = block
 
+balanceLists :: [a] -> [a] -> ([a], [a])
+balanceLists first second =
+    splitAt halfLength (first ++ second)
+    where
+        totalLength = fromIntegral ((Prelude.length first) + (Prelude.length second)) :: Double
+        halfLength = ceiling (totalLength / 2)
+
+balanceLast :: [[a]] -> [[a]]
+balanceLast [] = []
+balanceLast [x] = [x]
+balanceLast l = ((init . init) l) ++ [bal2Last, balLast]
+    where (bal2Last, balLast) = balanceLists ((last . init) l) (last l)
+
 -- splits a list of a into list of lists of a
 -- where each list in the list of lists has either 
 -- one element e with sizeof e greater than binSize
 -- or a list of elements with total sizeof <= binSize
 binSplit :: [a] -> Int -> (a -> Int) -> [[a]]
 binSplit [] _ _ = []
-binSplit (y:ys) binSize sizeof = go ys binSize sizeof [[y]]
+binSplit (y:ys) binSize sizeof = balanceLast (go ys binSize sizeof [[y]])
     where
         go [] _ _ binList = binList
         go (x:xs) binSize_ sizeof_ binList
@@ -209,9 +230,8 @@ binSplit (y:ys) binSize sizeof = go ys binSize sizeof [[y]]
 -- splits a BulletList block into multiple bulletlists
 -- based on max slidelines
 splitList :: Block -> [Block]
-splitList (BulletList items) = map (\x -> BulletList x) binnedItems
-    where
-        binnedItems = (binSplit items slidelines blockListHeight)
+splitList (BulletList items) = map (\x -> BulletList x) (binSplit items slidelines blockListHeight)
+splitList (OrderedList prefix items) = map (\x -> OrderedList prefix x) (binSplit items slidelines blockListHeight)
 splitList block = [block]
 
 -- dropEmpty :: [Block] -> [Block]
@@ -273,7 +293,7 @@ recoverEnvs env (m:ms) mathBlock = recoverEnvs env ms (sub pattern m mathBlock)
 -- used for alignment
 isEnvMath :: Text -> String -> Bool
 isEnvMath mathBlock env =
-    (isPrefixOf (pack ("\n\\begin{" ++ env ++ "}\n")) mathBlock) && (isSuffixOf (pack ("\n\\end{" ++ env ++ "}\n")) mathBlock)
+    (isPrefixOf (pack ("\n\\begin{" ++ env ++ "}\n")) mathBlock) && (Data.Text.isSuffixOf (pack ("\n\\end{" ++ env ++ "}\n")) mathBlock)
 
 -- surrounds the mathblock with a latex environment env
 envMath :: Text -> String -> Text
@@ -345,6 +365,8 @@ split (header@(Header _ _ _) : (RawBlock (Format "markdown") "---") : rest) =
     [header, (RawBlock (Format "markdown") "---")] ++ split rest
 split (header@(Header _ _ _) : bulletList@(BulletList _) : (RawBlock (Format "markdown") "---") : rest) = 
     (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitList bulletList)) ++ (split rest)
+split (header@(Header _ _ _) : orderedList@(OrderedList _ _) : (RawBlock (Format "markdown") "---") : rest) = 
+    (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitList orderedList)) ++ (split rest)
 split (header@(Header _ _ _) : displayMath@(Para [Math DisplayMath _]) : (RawBlock (Format "markdown") "---") : rest) = 
     (concatMap (\x -> [header, x, (RawBlock (Format "markdown") "---")]) (splitMath displayMath)) ++ (split rest)
 split (header@(Header _ _ _) : table@(Table _ _ _ _ _ _) : (RawBlock (Format "markdown") "---") : rest) = 
@@ -387,25 +409,37 @@ resolveImagePaths _ _ inline = return inline
 
 -- the main pandoc filter, returns IO Pandoc because
 -- of absolute path resolution
+
+initSafe :: [a] -> Maybe [a]
+initSafe [] = Nothing
+initSafe [_] = Just []
+initSafe (x:xs) = fmap (x :) (initSafe xs)
+
+removeTrailingSep :: Pandoc -> Pandoc
+removeTrailingSep (Pandoc meta blocks) | (Data.List.isSuffixOf [(RawBlock (Format "markdown") "---")] blocks) =
+    Pandoc meta (fromMaybe [] (initSafe blocks))
+removeTrailingSep pandoc = pandoc
+
 pandocFilterWithArgs :: [String] -> Pandoc -> IO Pandoc
-pandocFilterWithArgs args (Pandoc meta blocks) =
+pandocFilterWithArgs args (Pandoc meta blocks) = do
+    let combinedFilter =
+            removeTrailingSep
+            . walk dropNotes
+            . topDownBlockListFilter split
+            . walk maskMath
+            . walk sectionToSlides
+            . insertHeaders
+            . walk (concatMap dropStrayHRule)
+            . walk (concatMap dropEmptyList)
+            . topDownBlockFilter itemize
+            . topDownBlockFilter softBreakParagraph
     case args of
         (inputPathStr : outputPathStr : _) -> do
             inputPathAbs <- resolveDir' inputPathStr
             outputPathAbs <- resolveDir' outputPathStr
             replacedPathsBlocks <- walkM (resolveImagePaths inputPathAbs outputPathAbs) blocks
-            let combinedFilter =
-                    walk codifiedMath
-                    . walk dropNotes
-                    . topDownBlockListFilter split
-                    . walk maskMath
-                    . walk sectionToSlides
-                    . insertHeaders
-                    . walk (concatMap dropStrayHRule)
-                    . walk (concatMap dropEmptyList)
-                    . topDownBlockFilter itemize
             return (combinedFilter (Pandoc meta replacedPathsBlocks))
-        _ -> error "incorrect arguments please provide input path and output path"
+        _ -> return (combinedFilter (Pandoc meta blocks))
 
 main :: IO ()
 main = toJSONFilter pandocFilterWithArgs

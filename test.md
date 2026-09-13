@@ -1,186 +1,259 @@
-# Imperative Programming Paradigm
+# Logic Programming Formalism
 
-## Introduction
+Logic programming is based on the formal system of **predicate calculus**.
+It is a formalism based on *logical operations* and *quantification*.
 
-Imperative programming has turned out to be the *natural* paradigm of programming languages.
-The members of the imperative programming family have been dominating the market share of programming languages throughout the years with titans like BASIC, Pascal, C, Java and many more. 
+## Satisfiability and Horn Clauses
 
-## Learning Outcomes
+Logic programming applies the formalism of predicate calculus as means to prove statements and look for logical resolutions.
+To introduce these concepts, we will first talk about the satisfiability problem and horn clauses.
 
-At the end of this discussion you should be able to
+### Satisfiability
 
-1. Explain how imperative programming became the natural paradigm
-2. Explain the concept of state in the context of imperative programming
-3. Explain how the assignment statement enables the progression of states
-4. Create structured programs to represent algorithms
-5. Differentiate the subparadigms procedural programming and object-oriented programming
+A boolean expression is said to be **satisfiable** if there exists an assignment of truth values (either TRUE or FALSE) that evaluates the entire formula to TRUE.
+A **boolean expression**, is an expression that uses only boolean values, variables or boolean operations.
 
-### Quick Note on Imperative Programming and Procedural Programming
+Here's a trivial example of a satisfiable boolean expression:
 
-People usually use the terms imperative programming and procedural programming interchangeably.
-Procedural programming is a subparadigm of imperative programming family, but some people refer to procedural programming as imperative programming.
-That's because other imperative paradigms like object-oriented programming is derived from procedural programming.
-You can think procedural programming as the ancestor if other imperative paradigms.
+$$
+p \lor q \lor r
+$$
 
-In this lecture I refer to imperative paradigm as a whole, but I will focus on the main ideas that are common between other imperative paradigms.
-Ideas from object-oriented programming paradigm can be found on a separate lecture.
+This expression will evaluate to true if $p$, $q$, and $r$ are all set to TRUE.
 
-## Popularity of the Imperative Paradigm
+Here's a trivial example of an unsatisfiable expression:
 
-Imperative programming has turned out to be the *natural* paradigm of programming languages.
-The members of the imperative programming family have been dominating the market share of programming languages throughout the years with titans like BASIC, Pascal, C, Java and many more.
+$$
+p \land \neg p \land q
+$$
 
-If you think about it, this is not that surprising.
-This paradigm's dominance could be attributed to most computer scientists’ preference towards **pragmatic** and **efficient** programming languages.
-Especially since the most straightforward way of communicating to computer hardware is through the explicit manipulation of CPU memory and registers.
+It is not possible for this expression to evaluate to TRUE, since $p \land \neg p$ is a contradiction (it always evaluates to false).
 
-If you want the computer to do something for you, then you *communicate* to the computer that you want this and that to be done.
-And if you manage to give the computer correct and comprehensive **instructions** then you'll end up getting what you want.
+These examples are trivial since, the expressions are short enough, or there is an obvious contradiction that resolves the formula.
+But in general, satisfiability is one of the hardest problems in Computer Science.
+There are no fast algorithms that can find solutions to a general satisfiability problem.
 
-If we rewind back to the dawn of programming languages you'll see that early programming languages were built to **communicate to computer hardware**.
-As a result of this, programming languages naturally adopted syntax with **imperative** moods.
+For example try to check is the following formula is satisfiable:
 
-Assembly programs for example was mostly built from sequences of executable instructions which was patterned from imperative statements from natural language.
+$$
+\begin{aligned}
+& (u \lor \neg v \lor w) \land \\
+& (\neg u \lor v \lor p) \land \\
+& (\neg u \lor p \lor r)
+\end{aligned}
+$$
 
-```assembly
-INC ITER
-MOV AH,7
-ADD AH, AL
-```
+## Conjunctive Normal Form
 
-For example, the assembly instruction `INC ITER`, tells the computer to increment the memory variable called `ITER`.
-The instruction `MOV AH, 7`, tells the computer to move the value 7 to the `AH` register.
-The instruction `ADD AH, AL` tells the computer to add the contents of the `AH` register to the `AL` register.
+To make it a little easier to solve satisfiability problems, we usually write boolean formulas in **conjunctive normal form** (clausal normal form or CNF).
+A boolean formula is in CNF if it is a *conjunction of disjunctions of boolean literals*.
+Each disjunction is also known as a clause (e.g. $(u \lor \neg w \lor w)$).
+We call unnegated values like $u$ as a positive literal while negated values like $\neg w$ as a negative literal.
 
-As time went by, newer *higher level programming languages* emerged (higher level meaning farther from hardware and closer to human language) like Basic, Pascal, and C.
-The syntax of these programming languages were written as **abstractions** of hardware code.
-Although programs written in these languages became more human-readable compared to its predecessors, these newer languages retained their imperative tones and mechanisms.
-This progression meant that higher level programming languages built atop of imperative languages naturally adopted the **imperative paradigm** as well.
-Java, Python, and C++ for example which were all written in C, followed this progression, thus establishing the imperative family as the dominant paradigm in programming language design.
+Any boolean formula can be expanded into CNF using **logical equivalences**.
+The equivalent CNF of a boolean formula is easier to solve since we just need to find satisfiable assignments for each clause consistently (which is still not easy).
 
-### The STATE
+### Horn Clauses
 
-The existence of an explicit state is the foundation of imperative programming.
-The **state** of a program or a process on a given instance is the snapshot of its immediate relevant environment and context.
-The state of your CPU on a given instance for example will refer to the values found in the *registers and relevant memory*.
-On a specific process the state will refer to the values inside the *memory addresses* it resides in.
+**Horn clauses** are special clauses where there is *at most* one positive literal in the disjunction.
+A boolean formula in CNF where all clauses are Horn clauses is called a **Horn formula**.
+The satisfiability of a Horn formula is much easier to solve.
 
-On a computer program the state can refer the conceptual set of variable values related to the program's runtime on some given instance.
-Let's use this program as an example:
+$$
+\begin{aligned}
+& (\neg p) \land \\
+& (\neg q \lor r) \land \\
+& (\neg r \lor \neg s \lor t) \land \\
+& (\neg s \lor \neg t)
+\end{aligned}
+$$
 
-```c
-int x = 3
-int y = 4
-x = x + y
-```
+If each Horn clause in the formula has at least one negative literal, then the formula is *guaranteed to be satisfiable* by assigning FALSE to each variable.
+This is because the negative literals will all evaluate to TRUE, therefore making each clause TRUE.
+This Horn formula is a trivial case for satisfiability.
 
-At the start of runtime, the state of this program would be (*for all intents and purposes*) empty, since there are no relevant variables declared at this point.
-After executing the first line of code, the state of the program would look something like this:
+On the other hand if some of the clauses have no negative literals, then there are two possibilities. Either the formula can be reduced to a trivial satisfiable Horn clause or it can be reduced to a contradiction.
 
-| variable | value |
-| :------: | :---: |
-|   `x`    |   3   |
+$$
+\begin{aligned}
+& (\neg p) \land \\
+& (\neg q \lor r) \land \\
+& (s) \land \\
+& (\neg r \lor \neg s \lor t) \land \\
+& (\neg s \lor t)
+\end{aligned}
+$$
 
-One integer variable named `x` with the value 3.
-After the next line of code a new variable is introduced and immediately assigned with the value 4 so the state of the program at this instance will look like this:
+In this example, one of the Horn clauses have no negative literal.
+Note, that a Horn clause with no negative literal is a clause with exactly one positive literal.
 
-| variable | value |
-| :------: | :---: |
-|   `x`    |   3   |
-|   `y`    |   4   |
+To solve this formula we assign clause $(s)$ as TRUE, since this is the only way for the entire formula to be satisfiable.
 
-And at the last line, the value of `x` is updated by adding the value of `y`, so the final state of this program will look like this:
+$$
+\begin{aligned}
+& (\neg p) \land \\
+& (\neg q \lor r) \land \\
+& (\top) \land \\
+& (\neg r \lor \bot \lor t) \land \\
+& (\bot \lor t)
+\end{aligned}
+$$
 
-| variable | value |
-| :------: | :---: |
-|   `x`    |   7   |
-|   `y`    |   4   |
+[^top_and_bottom]
 
-You can inspect the state of a program using *debugging tools* like `gdb` for gcc.
-To enable debugging using `gdb`, you need to add the appropriate debug flag (`-g`) during compilation.
+[^top_and_bottom]: In the previous formula, TRUE is denoted by the $\top$ symbol, and FALSE is denoted by the $\bot$ symbol.
 
-```bash
-gcc -g program.c -o executable
-```
+From here, we just need to reduce the formula according to logical equivalencies:
 
-```bash
-gdb ./executable
-```
+$$
+\begin{aligned}
+& (\neg p) \land \\
+& (\neg q \lor r) \land \\
+& (\neg r \lor t) \land \\
+& (t)
+\end{aligned}
+$$
 
-##  Assignment Statement
+After reducing, one of the Horn clauses, $(t)$, has no negative literal.
+Which means it must be assigned TRUE.
 
-Another important construct of the imperative programming paradigm is the **assignment statement**.
-Assignment statements and the concept of state are very related to each other.
+$$
+\begin{aligned}
+& (\neg p) \land \\
+& (\neg q \lor r) \land \\
+& (\neg r \lor \top) \land \\
+& (\top)
+\end{aligned}
+$$
 
-Assignment statements allow your program to *mutate* the values of your variables.
-Mutation in the context of programming is a fancy term that basically means change[^mutation].
-And as we learned earlier, *changes to the context* of a program, which includes variables, creates states.
-Therefore, every **assignment statement**, corresponds to **new states** of a for the program.
+This reduces into:
 
-[^mutation]: When we say "variable mutation" we generally refer to in-place modification. This means that the value is not merely replaced by another value from a different memory address.
+$$
+\begin{aligned}
+& (\neg p) \land \\
+& (\neg q \lor r) \land \\
+\end{aligned}
+$$
 
-Assignment statements are usually executed through the use of the **“`=`”** operator (some languages like Pascal use “`:=`” instead).
-Although it borrows the equality operator from math, assignment operators behave very differently from an equality statement.
-Instead of communicating some kind proposition[^equality] that says two values are equal, the assignment statement has an **imperative mood**.
-Mutation is introduced once you perform an assignment to `a` again, signifying a change in the value of `a`.
+This formula is a trivial Horn formula (all clauses have at least one negative literal).
+The remaining clauses will be assigned FALSE, while $s$ and $t$ will be assigned TRUE.
+This means that this Horn formula is satisfiable.
 
-The closest corresponding mathematical construct to an assignment statement is the *let statement*.
-A statement in math such as "let x be equal to 3", has an **imperative mood**.
-But unlike an assignment statement which can change the value of a variable any number of times, a let statement can only set the value of a variable once.
+In this other example, the Horn formula can be reduced into a contradiction, which means that it is unsatisfiable.
 
-[^equality]: An equality a=b in math declares that some `a` is `b`, while an assignment operator `a=b` commands that `a`'s value is now the same as `b`.
+$$
+\begin{aligned}
+& (\neg p) \land \\
+& (\neg q \lor r) \land \\
+& (s) \land \\
+& (t) \land \\
+& (\neg s \lor \neg t)
+\end{aligned}
+$$
 
-For every assignment statement instructed to the computer corresponds to changes to programs state.
+First, we assign TRUE to $s$.
 
-![State changes](../mermaid_diagrams/state_changes.png)
+$$
+\begin{aligned}
+& (\neg p) \land \\
+& (\neg q \lor r) \land \\
+& (\top) \land \\
+& (t) \land \\
+& (\bot \lor \neg t)
+\end{aligned}
+$$
 
-The state of a program changes for every individual mutation of a variable.
-And you can compare the difference between the before and after of a specific assignment by comparing the **before-assignment** state and the **after-assignment state**.
-The *progression* from one state to another characterizes the effect of an assignment.
+Apply logical equivalencies to reduce.
 
-This is the important takeaway that you need to remember.
-Imperative programming is characterized by **imperative statements**.
-Statements that tell the computer what to do.
-The most important type of these statements is the **assignment statement**.
-An assignment statement's effect to your computer is characterized by the *progression* from one state to another state.
+$$
+\begin{aligned}
+& (\neg p) \land \\
+& (\neg q \lor r) \land \\
+& (t) \land \\
+& (\neg t)
+\end{aligned}
+$$
 
-If boil down imperative programs at its most abstract form, it is simply a *combination of assignment statements*.
-If arranged in the correct way, a given problem (*initial state*) can progress through multiple states until it reaches the solution (*final state*).
+Assign TRUE to $t$.
 
-## Structured Program Theorem
+$$
+\begin{aligned}
+& (\neg p) \land \\
+& (\neg q \lor r) \land \\
+& (\top) \land \\
+& (\bot)
+\end{aligned}
+$$
 
-Creating meaningful imperative programs is done by applying the **Bohm-Jacopini Theorem**, also known as the **Structured Program Theorem** [@bohm_flow_1966].
-This theorem was one of the theoretical frameworks proposed to characterize imperative programming.
+In this case, we end up with a FALSE clause, which means that the conjunction cannot be true.
+Therefore, this Horn formula is not satisfiable.
 
-The theorem describes a formalism of a class called **control flow graphs** which are capable of representing any computable function.
-These control flow graphs are actually something you are intimately familiar of.
-It is known to you as the trusty old **flow chart**.
-Any control flow graph can be created by combining subprograms in three specific ways.
-A subprogram is a recursive unit of control flow graphs.
-A subprogram can be a *single assignment statement*, or it can be a *combination* of more than one subprogram.
-Here are the three ways to combine subprograms:
+#### Horn Clauses as Implications
 
-1. Executing one subprogram, and then another subprogram (sequence)
-2. Executing one of two subprograms according to the value of a boolean (selection)
-3. Repeatedly executing a subprogram as long as a boolean expression is true (iteration)
+Horn clauses also have the advantage of being neatly rewritten as *implication statements*.
+If you apply the logical equivalency that converts disjunctions into implications.
+You can convert your Horn clauses into implication statements.
 
-![Flowcharts](../mermaid_diagrams/flowchart.png)
+$$
+\neg p \lor q \equiv p \to q
+$$
 
-The constructs described by this formalism became the natural architecture for programming language designers.
-This is the reason why CS students like you are introduced to programming using control flow graphs or flow charts.
-This is also the reason why programming languages like Pascal, C, Java and their derivatives are designed the way they are.
+A Horn clause that has exactly one positive literal can be converted into an implication with the sole positive literal as the conclusion, and the rest as the hypotheses.
 
-![Example Program](../mermaid_diagrams/modulo.png)
+$$
+\begin{aligned}
+\neg p_1 \lor \neg p_2 \lor \cdots \lor \neg p_n \lor q &\equiv \\
+(p_1 \land p_2 \land \cdots \land p_n) \to q
+\end{aligned}
+$$
 
-## Subparadigms under the Imperative family
+A Horn clause with exactly one positive literal and one or more negative literal is known as a **definite Horn clause**.
 
-### Procedural programming
+A Horn clause that is only made up of one positive literal and nothing else is called a **fact**.
+To convert it into an implication, we first write it as a disjunction using the identity property of disjunctions.
 
-Programming languages like Fortran, ALGOL, BASIC, and C fall under the **procedural paradigm**.
-Languages under this paradigm simplify a complex system by subdividing a program into different **procedures** or functions.
+$$
+\begin{aligned}
+q & \equiv \bot \lor q\\
+& \equiv \top \to q
+\end{aligned}
+$$
 
-### Object-oriented programming
+Note that, a Horn formula made up of only facts and definite Horn clauses is always satisfiable by assigning TRUE to every variable.
+By assigning, TRUE to every variable, you ensure that each positive literal is TRUE, meaning each Horn clause is also TRUE.
 
-Object-oriented programming focuses on modelling a system based on the real world ontology of **objects**.
-It uses an expressive type system to program the interactions within a system.
-Most modern programming languages, like C++, Python, Java, etc., have some object-oriented programming features.
+A Horn clause that is made up 1 or more negative literals, is called a **goal clause**.
+
+$$
+\begin{aligned}
+\neg p_1 \lor \neg p_2 \lor \cdots \lor \neg p_n & \equiv \\
+\neg p_1 \lor \neg p_2 \lor \cdots \lor \neg p_n \lor \bot & \equiv \\
+(p_1 \land p_2 \land \cdots \land p_n) \to \bot
+\end{aligned}
+$$
+
+#### Resolution
+
+Resolution is one of the inference rules of logic.
+According to resolution, assuming two clauses with complementary literals (a pair of literals that are negations of each other), you can conclude the resolvent.
+The resolvent is a disjunction of all the non-complementary literals from both clauses.
+
+$$
+\begin{aligned}
+p_1 \lor p_2 \lor \cdots \lor r & \\
+q_1 \lor q_2 \lor \cdots \lor \neg r & \\
+\hline
+p_1 \lor p_2 \lor q_1 \lor q_2 \cdots \\
+\end{aligned}
+$$
+
+In this example, the complements $r$ and $\neg r$ are cancelled out from the resolvent.
+
+Horn clauses are closed over resolution.
+This means that the resolution of two Horn clauses is guaranteed to be a horn clause.
+This property ensures that conclusions inferred from Horn clauses will always be Horn clauses.
+Because of this, it will always be easy to check the satisfiability of Horn formula regardless of any additional conclusions.
+
+As we will discuss later, Horn clauses make up Logic programs.
+When you are writing Logic programs, you are simply writing a set of Horn clauses.
+ 
