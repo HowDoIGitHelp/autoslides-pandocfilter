@@ -299,7 +299,7 @@ maskNewlines mathBlock = replacedBlock
         replacedBlock = gsub rePattern replacement mathBlock
 
 envs :: [String]
-envs = ["bmatrix", "matrix"]
+envs = ["bmatrix", "matrix", "array"]
 
 -- from a list of envs, it returns the same mathblock but with
 -- each env from the list masked, it also recovers a list of list of the 
