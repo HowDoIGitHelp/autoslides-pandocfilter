@@ -196,15 +196,19 @@ inlineLength (Cite _ inlines) = sum (map inlineLength inlines)
 componentLength :: Block -> Int
 componentLength (Plain inlines) = sum (map inlineLength inlines)
 componentLength (Para inlines) = sum (map inlineLength inlines)
-componentLength _ = error "unsupported length calculation"
+componentLength block = error ("unsupported length calculation" ++ (show block))
 
 -- calculates the height of a block
 -- if a blocks length exceeds 100,
 -- assume that the block wraps to the next line
 componentHeight :: Block -> Int
 componentHeight (BulletList items) = sum (map blockListHeight items)
-componentHeight block = ceiling (blockLength / (fromIntegral linewidth))
+componentHeight (OrderedList _ items) = sum (map blockListHeight items)
+componentHeight block@(Para _) = ceiling (blockLength / (fromIntegral linewidth))
     where blockLength = ((fromIntegral . componentLength) block) :: Double
+componentHeight block@(Plain _) = ceiling (blockLength / (fromIntegral linewidth))
+    where blockLength = ((fromIntegral . componentLength) block) :: Double
+componentHeight _ = slidelines
 
 -- returns the sum of the heights in a list of blocks
 blockListHeight :: [Block] -> Int
@@ -450,8 +454,8 @@ split (header@(Header _ _ _) : code@(CodeBlock _ _) : SlideSep : rest) =
     (concatMap (\x -> [header, x, slideSep]) (splitCode code)) ++ (split rest)
 split (header@(Header _ _ _) : block : SlideSep : rest) = 
     [header, block, slideSep] ++ (split rest)
+split (block : rest) = block : (split rest)
 split [] = []
-split _ = error "unsupported split"
 
 -- drop common prefix from a list
 dropCommon :: Eq a => [a] -> [a] -> ([a], [a])

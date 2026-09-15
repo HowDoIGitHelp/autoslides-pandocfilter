@@ -1,6 +1,6 @@
 cabal-version:      3.16
 name:               pandoc-md-slides
-version:            0.1.0.0
+version:            0.1.1.0
 synopsis:           A pandoc filter to convert markdown notes to markdown slides
 description:        A pandoc filter to convert markdown notes to markdown slides. Splits long slides and resolves image target paths
 license:            MIT
