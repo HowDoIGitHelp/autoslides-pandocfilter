@@ -5,6 +5,16 @@
 This pandoc filter converts markdown notes (written in plain prose) into summarized slides.
 The filter automatically splits long slides and resolves image target paths to new paths.
 
+## Installing using cabal
+
+You can install the package by unpacking the tarball distributable in the releases page and running `cabal install`
+
+```bash
+tar -xvf pandoc-md-slides-<version>.tar.gz
+cd pandoc-md-slides-<version>
+cabal install
+```
+
 ## Basic Usage
 
 ```bash
@@ -165,4 +175,20 @@ pandoc -t json test.md | \
     pandoc -f json \
     -t markdown-simple_tables-multiline_tables-grid_tables \
     -o outputs/output.md
+```
+
+Here's an example Makefile that you can use to automatically resolve the directories of the source and the output.
+
+```makefile
+INPUTDIR ?= $(dir $(SOURCE))
+OUTPUTDIR ?= $(dir $(OUTPUT))
+
+$(OUTPUT): $(SOURCE)
+	pandoc -t json $(SOURCE) | \
+		md-slides $(INPUTDIR) $(OUTPUTDIR) | \
+		remarkjs | \
+		pandoc -f json \
+		-t markdown-simple_tables-multiline_tables-grid_tables \
+		>> $(OUTPUT)
+        -o $(OUTPUT)
 ```
