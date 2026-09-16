@@ -7,3 +7,8 @@
 ## 0.1.1.0 -- 2025-09-15
 
 - fix length and height calculations for nested lists
+
+## 1.0.0.0 -- 2025-09-16
+
+- changed source dir (`-s`) and output dir (`-o`) into optional named arguments
+- added optional arguments slide lines (`-l`) and line width (`-w`) to configure slide split behavior

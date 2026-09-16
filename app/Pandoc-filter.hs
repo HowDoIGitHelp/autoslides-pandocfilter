@@ -22,13 +22,63 @@ import Data.Maybe (fromMaybe, listToMaybe)
 import Path (Path, Abs, Dir, File, toFilePath)
 import Path.IO (resolveDir', resolveFile)
 import System.FilePath (splitDirectories, (</>))
+import System.Environment (withArgs)
 import Data.List (isSuffixOf)
+import Options.Applicative
+    ( Parser
+    , strOption
+    , execParser
+    , helper
+    , progDesc
+    , header
+    , fullDesc
+    , info
+    , help
+    , metavar
+    , short
+    , long
+    , optional
+    , auto
+    , option
+    , (<**>) )
 
-slidelines :: Int
-slidelines = 6
+data FilterArgs = FilterArgs
+    { sourceDirArg :: Maybe String
+    , outputDirArg :: Maybe String
+    , slidelinesArg :: Maybe Int
+    , linewidthArg :: Maybe Int
+    } deriving (Show)
 
-linewidth :: Int
-linewidth = 100
+argParser :: Parser FilterArgs
+argParser = FilterArgs
+    <$> optional
+        ( strOption
+            ( long "sourceDir"
+            <> short 's'
+            <> metavar "DIR"
+            <> help "path to directory of source" )
+        )
+    <*> optional 
+        ( strOption
+            ( long "outputDir"
+            <> short 'o'
+            <> metavar "DIR"
+            <> help "path to directory of output" )
+        )
+    <*> optional
+        ( option auto
+            ( long "lines"
+            <> short 'l'
+            <> metavar "INT"
+            <> help "max lines in a slide" )
+        )
+    <*> optional
+        ( option auto
+            ( long "width"
+            <> short 'w'
+            <> metavar "INT"
+            <> help "maximum width of a line in characters" )
+        )
 
 pattern SlideSep :: Block
 pattern SlideSep <- RawBlock (Format "markdown") "---"
@@ -146,7 +196,7 @@ combineHeaders ls =
     zipWith interleave betweeners (oddIndices ls)
     where
         betweeners = (map ((fromMaybe defaultHeader) . listToMaybe) (evenIndices ls))
-        defaultHeader = Header 1 ( "default-header" , [] , [] ) [ Str "Default" , Space , Str "Header" ]
+        defaultHeader = Header 1 ( "default-headerBlock" , [] , [] ) [ Str "Default" , Space , Str "Header" ]
 -- interleaves a block in between the elements of a list of blocks
 -- also removes id metadata of headers
 interleave :: Block -> [Block] -> [Block]
@@ -165,8 +215,8 @@ insertHeaders (Pandoc meta blocks) = (Pandoc meta (foldl (++) [] (combineHeaders
 sectionToSlides :: [Block] -> [Block]
 sectionToSlides (header1@(Header _ _ _) : header2@(Header _ _ _) : rest) =
    [header1, slideSep] ++ (sectionToSlides (header2 : rest))
-sectionToSlides (header@(Header _ _ _) : nonHeader : rest) =
-    [header, nonHeader, slideSep] ++ sectionToSlides rest
+sectionToSlides (headerBlock@(Header _ _ _) : nonHeader : rest) =
+    [headerBlock, nonHeader, slideSep] ++ sectionToSlides rest
 sectionToSlides (block : rest) = block : sectionToSlides rest
 sectionToSlides [] = []
 
@@ -201,18 +251,18 @@ componentLength block = error ("unsupported length calculation" ++ (show block))
 -- calculates the height of a block
 -- if a blocks length exceeds 100,
 -- assume that the block wraps to the next line
-componentHeight :: Block -> Int
-componentHeight (BulletList items) = sum (map blockListHeight items)
-componentHeight (OrderedList _ items) = sum (map blockListHeight items)
-componentHeight block@(Para _) = ceiling (blockLength / (fromIntegral linewidth))
+componentHeight :: Int -> Int -> Block -> Int
+componentHeight slidelines linewidth (BulletList items) = sum (map (blockListHeight slidelines linewidth) items)
+componentHeight slidelines linewidth (OrderedList _ items) = sum (map (blockListHeight slidelines linewidth) items)
+componentHeight _ linewidth block@(Para _) = ceiling (blockLength / (fromIntegral linewidth))
     where blockLength = ((fromIntegral . componentLength) block) :: Double
-componentHeight block@(Plain _) = ceiling (blockLength / (fromIntegral linewidth))
+componentHeight _ linewidth block@(Plain _) = ceiling (blockLength / (fromIntegral linewidth))
     where blockLength = ((fromIntegral . componentLength) block) :: Double
-componentHeight _ = slidelines
+componentHeight slidelines _ _ = slidelines
 
 -- returns the sum of the heights in a list of blocks
-blockListHeight :: [Block] -> Int
-blockListHeight blocks = sum (map componentHeight blocks)
+blockListHeight :: Int -> Int -> [Block] -> Int
+blockListHeight slidelines linewidth blocks = sum (map (componentHeight slidelines linewidth) blocks)
 
 -- a helper function to replace list items with their heights
 -- used for debugging
@@ -274,11 +324,11 @@ renumberedLists [] = []
 
 -- splits a list blocks into multiple lists
 -- based on max slidelines
-splitList :: Block -> [Block]
-splitList (BulletList items) = map (\x -> BulletList x) (binSplit items slidelines blockListHeight)
-splitList (OrderedList prefix items) =
-    renumberedLists (map (\x -> OrderedList prefix x) (binSplit items slidelines blockListHeight))
-splitList block = [block]
+splitList :: Int -> Int -> Block -> [Block]
+splitList slidelines linewidth (BulletList items) = map (\x -> BulletList x) (binSplit items slidelines (blockListHeight slidelines linewidth))
+splitList slidelines linewidth (OrderedList prefix items) =
+    renumberedLists (map (\x -> OrderedList prefix x) (binSplit items slidelines (blockListHeight slidelines linewidth)))
+splitList _ _ block = [block]
 
 -- dropEmpty :: [Block] -> [Block]
 -- dropEmpty (Header _ _ _ : HorizontalRule : rest) = dropEmpty rest
@@ -397,8 +447,8 @@ normalizedAlignment (Para [Math DisplayMath mathBlock]) =
 normalizedAlignment block = block
 
 -- splits a mathblock into bins
-splitMath :: Block -> [Block]
-splitMath (Para [Math DisplayMath mathBlock]) =
+splitMath :: Int -> Block -> [Block]
+splitMath slidelines (Para [Math DisplayMath mathBlock]) =
     map (\x -> (Para [Math DisplayMath ((cleanUpMathBlock . alignment) x)])) binnedBlocks
     where
         strippedEnv = stripEnvMath "aligned" mathBlock
@@ -406,56 +456,56 @@ splitMath (Para [Math DisplayMath mathBlock]) =
         binnedLines = (binSplit mLines slidelines mathLineHeight)
         binnedBlocks = map (intercalate "\\\\") binnedLines
         alignment = if (isEnvMath "aligned" mathBlock) then (envMath "aligned") else id
-splitMath block = [block]
+splitMath _ block = [block]
 
 -- returns the height of a row
 rowHeight :: Row -> Int
 rowHeight _ = 1
 
 -- splits a table body into a list of tablebodies based on bins
-splitTableBody :: TableBody -> [TableBody]
-splitTableBody (TableBody attr rowHeadColumns headerRows rows) =
+splitTableBody :: Int -> TableBody -> [TableBody]
+splitTableBody slidelines (TableBody attr rowHeadColumns headerRows rows) =
     (map (\x -> TableBody attr rowHeadColumns headerRows x) binnedRows)
     where binnedRows = binSplit rows slidelines rowHeight
 
 -- splits a table's tablebody component
-splitTable :: Block -> [Block]
-splitTable (Table attr caption colspec header (body:_) foot) = tableList
+splitTable :: Int -> Block -> [Block]
+splitTable slidelines (Table attr caption colspec headerBlock (body:_) foot) = tableList
     where
-        tableList = (map (\x -> Table attr caption colspec header [x] foot) (splitTableBody body))
-splitTable block = [block]
+        tableList = (map (\x -> Table attr caption colspec headerBlock [x] foot) (splitTableBody slidelines body))
+splitTable _ block = [block]
 
 codeLineHeight :: Text -> Int
 codeLineHeight _ = 1
 
 -- splits code blocks int lines of code
-splitCode :: Block -> [Block]
-splitCode (CodeBlock (_, classes, kvs) codeBlock) =
+splitCode :: Int -> Block -> [Block]
+splitCode slidelines (CodeBlock (_, classes, kvs) codeBlock) =
     map (\x -> (CodeBlock ("", classes, kvs) x)) binnedCode
     where
         codeLines = splitOn (pack "\n") codeBlock
         binnedLines = binSplit codeLines slidelines codeLineHeight
         binnedCode = map (intercalate "\n") binnedLines
-splitCode block = [block]
+splitCode _ block = [block]
 
 -- splits blocks into multiple slides
-split :: [Block] -> [Block]
-split (header@(Header _ _ _) : SlideSep : rest) =
-    [header, slideSep] ++ split rest
-split (header@(Header _ _ _) : bulletList@(BulletList _) : SlideSep : rest) = 
-    (concatMap (\x -> [header, x, slideSep]) (splitList bulletList)) ++ (split rest)
-split (header@(Header _ _ _) : orderedList@(OrderedList _ _) : SlideSep : rest) = 
-    (concatMap (\x -> [header, x, slideSep]) (splitList orderedList)) ++ (split rest)
-split (header@(Header _ _ _) : displayMath@(Para [Math DisplayMath _]) : SlideSep : rest) = 
-    (concatMap (\x -> [header, x, slideSep]) (splitMath displayMath)) ++ (split rest)
-split (header@(Header _ _ _) : table@(Table _ _ _ _ _ _) : SlideSep : rest) = 
-    (concatMap (\x -> [header, x, slideSep]) (splitTable table)) ++ (split rest)
-split (header@(Header _ _ _) : code@(CodeBlock _ _) : SlideSep : rest) = 
-    (concatMap (\x -> [header, x, slideSep]) (splitCode code)) ++ (split rest)
-split (header@(Header _ _ _) : block : SlideSep : rest) = 
-    [header, block, slideSep] ++ (split rest)
-split (block : rest) = block : (split rest)
-split [] = []
+split :: Int -> Int -> [Block] -> [Block]
+split slidelines linewidth (headerBlock@(Header _ _ _) : SlideSep : rest) =
+    [headerBlock, slideSep] ++ (split slidelines linewidth rest)
+split slidelines linewidth (headerBlock@(Header _ _ _) : bulletList@(BulletList _) : SlideSep : rest) = 
+    (concatMap (\x -> [headerBlock, x, slideSep]) (splitList slidelines linewidth bulletList)) ++ (split slidelines linewidth rest)
+split slidelines linewidth (headerBlock@(Header _ _ _) : orderedList@(OrderedList _ _) : SlideSep : rest) = 
+    (concatMap (\x -> [headerBlock, x, slideSep]) (splitList slidelines linewidth orderedList)) ++ (split slidelines linewidth rest)
+split slidelines linewidth (headerBlock@(Header _ _ _) : displayMath@(Para [Math DisplayMath _]) : SlideSep : rest) = 
+    (concatMap (\x -> [headerBlock, x, slideSep]) (splitMath slidelines displayMath)) ++ (split slidelines linewidth rest)
+split slidelines linewidth (headerBlock@(Header _ _ _) : table@(Table _ _ _ _ _ _) : SlideSep : rest) = 
+    (concatMap (\x -> [headerBlock, x, slideSep]) (splitTable slidelines table)) ++ (split slidelines linewidth rest)
+split slidelines linewidth  (headerBlock@(Header _ _ _) : code@(CodeBlock _ _) : SlideSep : rest) = 
+    (concatMap (\x -> [headerBlock, x, slideSep]) (splitCode slidelines code)) ++ (split slidelines linewidth rest)
+split slidelines linewidth (headerBlock@(Header _ _ _) : block : SlideSep : rest) = 
+    [headerBlock, block, slideSep] ++ (split slidelines linewidth rest)
+split slidelines linewidth (block : rest) = block : (split slidelines linewidth rest)
+split _ _ [] = []
 
 -- drop common prefix from a list
 dropCommon :: Eq a => [a] -> [a] -> ([a], [a])
@@ -495,14 +545,18 @@ removeTrailingSep (Pandoc meta blocks) | (Data.List.isSuffixOf [slideSep] blocks
     Pandoc meta (fromMaybe [] (initSafe blocks))
 removeTrailingSep pandoc = pandoc
 
+-- validInt :: String -> Bool
+-- validInt str = case (readMaybe str :: Maybe Int) of
+--     Just int -> int > 0
+--     Nothing -> False
+
 -- the main pandoc filter, returns IO Pandoc because
 -- of absolute path resolution
-pandocFilterWithArgs :: [String] -> Pandoc -> IO Pandoc
+pandocFilterWithArgs :: FilterArgs -> Pandoc -> IO Pandoc
 pandocFilterWithArgs args (Pandoc meta blocks) = do
-    let combinedFilter =
+    let beforeSplitFilter =
             removeTrailingSep
             . walk dropNotes
-            . topDownBlockListFilter split
             . topDownBlockFilter maskMath
             . topDownBlockListFilter sectionToSlides
             . insertHeaders
@@ -512,8 +566,15 @@ pandocFilterWithArgs args (Pandoc meta blocks) = do
             . topDownBlockFilter normalizedAlignment
             . topDownBlockFilter stripIndentMath
             . topDownBlockFilter softBreakParagraph
-    case args of
-        (inputPathStr : outputPathStr : _) -> do
+    let slidelines = case (slidelinesArg args) of
+            Just l -> l
+            Nothing -> 6
+    let linewidth = case (linewidthArg args) of
+            Just w -> w
+            Nothing -> 100
+    let combinedFilter = (topDownBlockListFilter (split slidelines linewidth)) . beforeSplitFilter
+    case (sourceDirArg args, sourceDirArg args) of
+        (Just inputPathStr, Just outputPathStr) -> do
             inputPathAbs <- resolveDir' inputPathStr
             outputPathAbs <- resolveDir' outputPathStr
             replacedPathsBlocks <- walkM (resolveImagePaths inputPathAbs outputPathAbs) blocks
@@ -521,4 +582,11 @@ pandocFilterWithArgs args (Pandoc meta blocks) = do
         _ -> return (combinedFilter (Pandoc meta blocks))
 
 main :: IO ()
-main = toJSONFilter pandocFilterWithArgs
+main = do
+    args <- execParser opts
+    withArgs [] $ toJSONFilter (pandocFilterWithArgs args)
+    where
+        opts = info (argParser <**> helper)
+            ( fullDesc
+            <> progDesc "Convert md notes AST to md slides AST"
+            <> header "md-slides")

@@ -1,736 +1,311 @@
 class: center, middle
 
-# Behavioral Patterns
+# Imperative Programming Paradigm
 
 ---
-class: center, middle
 
 # Introduction
+
+- Imperative programming has turned out to be the *natural* paradigm of
+  programming languages.
 
 ---
 
 # Learning Outcomes
 
-1.  Design systems that apply the strategy pattern
-2.  Design systems that apply the state pattern
-3.  Design systems that apply the command pattern
-4.  Design systems that apply the observer pattern
-5.  Design systems that apply the template pattern
-6.  Design systems that apply the iterator pattern
+1.  Explain how imperative programming became the natural paradigm
+2.  Explain the concept of state in the context of imperative
+    programming
+3.  Explain how the assignment statement enables the progression of
+    states
+
+---
+
+# Learning Outcomes
+
+4.  Create structured programs to represent algorithms
+5.  Differentiate the subparadigms procedural programming and
+    object-oriented programming
 
 ---
 class: center, middle
 
-# Strategy pattern
+# Quick Note on Imperative Programming and Procedural Programming
 
 ---
 
-# Problem
+# Popularity of the Imperative Paradigm
 
-![strategy](../../copyright_free_drawings/strategy.png)
-
----
-
-# Solution
-
-![Strategy pattern](../../uml/umlOutputs/Strategy.svg)
-
----
-class: center, middle
-
-# Example
+- Imperative programming has turned out to be the *natural* paradigm of
+  programming languages.
 
 ---
 
-# Fraction Calculations
+# Popularity of the Imperative Paradigm
 
-- `left` - represents the left operand fraction
-- `right` - represents the right operand fraction
-- `operation` - represents the operation ($+$,$-$,$\times$,$\div$)
-- `answer` - represents the solution of the operation
-
----
-
-# Fraction Calculations
-
-![strategy pattern example](../../uml/umlOutputs/FractionCalculator.svg)
+- This paradigm's dominance could be attributed to most computer
+  scientists' preference towards **pragmatic** and **efficient**
+  programming languages.
 
 ---
 
-# Why this is elegant
+# Popularity of the Imperative Paradigm
 
-- **Open/Closed Principle** - If you want to add new strategies, you
-  wouldn't need to touch any existing code.
-- The implementation of a strategy is deeply tucked inside multiple
-  layers of encapsulation. Changing these implementations are very easy.
-- You can swap strategies during runtime in the same way you do in
-  functional programming.
+- If you want the computer to do something for you, then you
+  *communicate* to the computer that you want this and that to be done.
+- And if you manage to give the computer correct and comprehensive
+  **instructions** then you'll end up getting what you want.
 
 ---
 
-# How to implement it
+# Popularity of the Imperative Paradigm
 
-1.  Create an abstract `Strategy` that contains an abstract method
-    called `execute`. This method should be specified to accept all the
-    necessary parameters needed by your parameterized function.
-2.  For every strategy, the higher order method can accept, you create a
-    realization for `Strategy` and implement the correct behavior in
-    `execute`.
-
----
-
-# How to implement it
-
-3.  The higher order function should now be specified to accept a
-    `strategy` of type `Strategy`.
-4.  Inside the higher order function, whenever it wants to perform the
-    strategies embedded behavior, call `strategy.execute(...)`.
-
----
-class: center, middle
-
-# State Pattern
+- If we rewind back to the dawn of programming languages you'll see that
+  early programming languages were built to **communicate to computer
+  hardware**.
+- As a result of this, programming languages naturally adopted syntax
+  with **imperative** moods.
 
 ---
 
-# Problem
-
-![State](../../copyright_free_drawings/state.png)
-
----
-
-# Solution
-
-![state pattern](../../uml/umlOutputs/State.svg)
-
----
-
-# Solution
-
-![state diagram](../../uml/statediagram.png)
-
----
-class: center, middle
-
-# Example
-
----
-
-# States of matter
-
-![state diagram example](../../uml/statediagramexample.png)
-
----
-
-# States of matter
-
-> Delegating behavior to the composed state means that, when the
-> `Matter` instances invoke, `compress()`, `release()` `heat()`, and
-> `cool()`, the composed `State` owned by the matter calls its own
-> version of `compress()`, `relaease()` `heat()`, and `cool()`.
-
----
-
-# States of matter
-
-![state example](../../uml/umlOutputs/StatesOfMatter.svg)
-
----
-
-# States of matter
-
-> Matter owns an instance of `State`, and that instance has an attribute
-> called `matter`. The attribute `matter` is the reference to the
-> instance of `Matter` that owns it. The `State` instance needs this
-> reference so that it can change the matter's state when it is
-> compressed, released, heated, or cooled.
-
----
-
-# Why this is elegant
-
-- **Single Responsibility Principle** - behavior related to state is
-  delegated to the state itself.
-- **Open/Closed Principle** - You can incorporate new states to the
-  system without touching any existing client code
-- Implementing this pattern will remove bulky and annoying state
-  conditionals
-
----
-
-# How to implement it
-
-1.  Create an abstract `State` that contains abstract methods for all
-    state dependent behavior (context related behaviors that are
-    dependent on context's state).
-2.  For every state the `Context` can have, create a realization of
-    `State`.
-3.  `Context` owns an attribute that represents the current state
-    (`currentState`) that it owns.
-
----
-
-# How to implement it
-
-4.  If the state needs to control the `Context` instance that owns it,
-    add a backreference to `Context` inside state.
-5.  Whenever a `Context` instance performs state dependent methods, it
-    calls `currentState.stateDependentBehavior()` instead so that its
-    behavior is dependent on its current state.
-
----
-class: center, middle
-
-# Command Pattern
-
----
-
-# Problem
-
-![Command (What does this strange picture
-mean?)](../../copyright_free_drawings/command.png)
-
----
-
-# Solution
-
-- These problems have a common solution, the **command pattern**.
-
----
-
-# Solution
-
-- If you want to keep a history of the performed commands, the `Invoker`
-  may keep a list of `Commands`. This way the data stored in the list
-  history, is a perfect representation of the previous commands.
-
-- If you want the `Commands` to be undoable, you can store a backup of
-  the receiver (and other affected objects) by the `Command` inside each
-  instance of `Command` . Undoing a command will be as simple as
-  restoring the receiver to its backup.
-
----
-
-# Solution
-
-![command example](../../uml/umlOutputs/Command.svg)
-
----
-
-# Solution
-
-> Instead of passing the receiver in the `Invoker` methods, you can
-> create an attribute called receiver inside `Invoker`. But doing this
-> will make it so there is one `Receiver` instance for every `Invoker`
-> instance.
->
-> The commands should only affect the receiver. If the behavior that is
-> performed changes a lot of objects, then make a `Receiver` class that
-> encapsulates all of the affected objects. Doing this will make the
-> implementation of undo easier since the backup inside of the command
-> will simply be an older version of `Receiver`.
->
-> Different command realizations are not necessarily of the same
-> `Strategy`. That's why the parameters of the behavior are stored as
-> attributes of the command, not passed in the `execute()` function.
-> This is so that no matter what the command is, all `execute()`
-> functions will have the same type signatures.
-
----
-class: center, middle
-
-# Example
-
----
-
-# Zooming through a maze
-
-- `Board` - this represents the layout of the maze. The layout is loaded
-  from a file. It has these attributes:
-  - `__isSolid` - this is a 2 dimensional grid encoded as a nested list
-    of booleans which represents the solid boundaries of the maze. For
-    example if `__isSolid[row][col]` is true then it means that that
-    cell on (row,col) is a boundary
-  - `__start` - a tuple of two integers that represent where the
-    character starts
-  - `__end` - tuple of two integers that represent the position of the
-    end of the maze
-  - `__cLoc` - tuple of two integers that represents the current
-    location of the character
-  - `moveUp()`, `moveDown()`, `moveLeft()`, `moveRight()` - moves the
-    character one space, in the respective direction. The character
-    cannot move to a boundary cell, it will raise an error instead.
-  - `canMoveUp()`, `canMoveDown()`, `canMoveLeft()`, `canMoveRight()` -
-    returns true if the cell in the respective direction is not solid.
-  - `__str()__` string representation of the board. It shows which are
-    the boundaries and the character location
-
----
-
-# Zooming through a maze
-
-- `dpad_up()`, `dpad_down()`, `dpad_left()`, `dpad_right()` - The
-  character dashes through the maze in the specified direction until it
-  hits a boundary.
-- `a_button()` - The character undoes the previous action it did.
-
----
-
-# Zooming through a maze
-
-![command example](../../uml/umlOutputs/ZoomingThroughAMaze.svg)
-
----
-
-# Why this is elegant
-
-- **Single Responsibility Principle** - The behavioral responsibilities
-  in the system are thoroughly separated. One invokes the command, and
-  the other performs the behavior associated with the command.
-- **Open/Closed Principle** - If there are more commands you want to
-  add, you don't have to touch any existing code.
-- Switching between invokers and receivers is easily done
-
----
-
-# Why this is elegant
-
-- You can implement undo (and redo)
-- You can defer the execution of behavior
-- A command may be made of smaller simpler commands
-
----
-
-# How to implement it
-
-1.  Create an abstraction `Command` that contains abstract method
-    `execute()`, and other command related methods like `undo()`.
-2.  For every command, create a realization to `Command`. These commands
-    uses a reference to a `Reciever` instance. This instance represents
-    the instance/s that are affected whenever `Command` realizations are
-    executed.
-
----
-
-# How to implement it
-
-3.  Create an `Invoker` class that will be responsible for
-    instantiating, preparing, and executing commands. Inside these class
-    are methods for invoking each commands. When these methods are
-    called, the invoker does the following:
-    1.  Instantiate an instance of `Command` called `c` with the correct
-        realization.
-    2.  select the receiver of the `Command`, including the related
-        parameters.
-    3.  invoke `c.execute()`.
-
----
-
-# How to implement it
-
-4.  If the system supports undoable commands, the `Invoker` should keep
-    a list of commands called `commandHistory` and each command instance
-    should keep a reference called `backup` to enable restoration of
-    `Reciever` instances.
-
----
-class: center, middle
-
-# Observer Pattern
-
----
-
-# Problem
-
-![observer](../../copyright_free_drawings/observer.png)
-
----
-
-# Solution
-
-![observer](../../uml/umlOutputs/Observer.svg)
-
----
-
-# Solution
-
-> Whenever an observer has updated, the publisher needs to pass all the
-> necessary details in the notification. This is generally done by
-> passing the updated subject in the `update(updatedSubject)` method.
->
-> In some cases, the observer needs to keep a copy of the subject as an
-> attribute. Make sure to change the value of this attribute during
-> updates.
->
-> Make sure that changes to the subject are only done using the
-> `Publisher` class (`manipulateSubject()`). If you change the subject
-> without using `Publisher`'s methods, your subscribers won't be
-> notified.
-
----
-class: center, middle
-
-# Example
-
----
-
-# Push Notifier for Weather and Headlines
-
-- `EmailSubscriber` - every time the `currentWeather` or
-  `currentHeadline` changes you send an email to the specified `email`.
-  (you don't have to actually send an email. You can just simulate
-  sending an email by printing something like "sending
-  `<weather>`{=html} and `<headline>`{=html} to `<email>`{=html}").
-- `FileLogger` - every time the `currentWeather` or `currentHeadline`
-  changes, you append the updated weather and headline to the file
-  specified in the attribute `filename`. You actually have to update a
-  file via kotlin/python file writing.
-
----
-
-# Push Notifier for Weather and Headlines
-
-![observer example](../../uml/umlOutputs/WeatherNotifier.svg)
-
----
-
-# Why this is elegant
-
-- **Open/Closed Principle** - You can add new `Observer` realizations
-  seamlessly every time there are new objects that are interested in the
-  subject.
-- A observer can be subscribed/unsubscribed during runtime
-
----
-
-# How to implement it
-
-1.  Create an `Observer` abstraction that represents all classes that
-    can potentially observe changes to the `Publisher`. `Observer` will
-    contain the abstract method `update()`.
-2.  All classes that want to be notified about changes to the `subject`
-    should realize `Observer`.
-3.  `Publisher` will either own/use an instance of the `subject` of
-    interest. It will also use an attribute which is stores the list of
-    `Observers` that are interested in the subject. To attach or detach
-    `Observer`s, `Publisher` contains the methods `subscribe()` and
-    `unsubscribe()`.
-
----
-
-# How to implement it
-
-4.  Every time `subject` is manipulated, it should be done through
-    `Publisher` , because `Publisher` needs to notify all `Observers` in
-    its observer list attribute after every manipulation. This
-    notification is done through `notifyObservers()` after the end of
-    every subject manipulation.
-5.  Inside the `Publisher`s `notifyObservers` method, every `Observer`
-    in its list of observers invoke their `update()` method.
-
----
-class: center, middle
-
-# Template Method Pattern
-
----
-
-# Problem
-
-- Say you have two or more *almost* identical behaviors from different
-  classes.
-
----
-
-# Problem
-
-![template](../../copyright_free_drawings/template.png)
-
----
-
-# Solution
-
-- This superclass will also contain the common implementation for the
-  **template method**, the method that combines all steps into the
-  original object behavior.
-
----
-
-# Solution
-
-![template method](../../uml/umlOutputs/Template.svg)
-
----
-
-# Solution
-
-> The steps in the superclass can be a mix of abstract methods and
-> concrete methods. Make a method abstract if you want to force all
-> specializations to override these steps. You'll want to do these if
-> some of the steps in your template doesn't have a default
-> implementation.
-
----
-class: center, middle
-
-# Example
-
----
-
-# Brute Force Recipe
-
-- **Equality Search**
-
----
-
-# Brute Force Recipe
-
-``` kotlin
-#searchSpace = [2,3,1,0,6,2,4]
-#target = 2
-
-i = 0
-solutions = []
-candidate = searchSpace[0]
+# Popularity of the Imperative Paradigm
+
+``` assembly
+INC ITER
+MOV AH,7
+ADD AH, AL
 ```
 
 ---
 
-# Brute Force Recipe
+# Popularity of the Imperative Paradigm
 
-``` kotlin
-while(i<len(searchSpace)):
-    if candidate == target:
-        solutions.add(candidate)
-    candidate = searchSpace[++i]
-    
-#solution = [2,2]
+- As time went by, newer *higher level programming languages* emerged
+  (higher level meaning farther from hardware and closer to human
+  language) like Basic, Pascal, and C.
+- The syntax of these programming languages were written as
+  **abstractions** of hardware code.
+
+---
+
+# Popularity of the Imperative Paradigm
+
+- This progression meant that higher level programming languages built
+  atop of imperative languages naturally adopted the **imperative
+  paradigm** as well.
+
+---
+
+# The STATE
+
+- The **state** of a program or a process on a given instance is the
+  snapshot of its immediate relevant environment and context.
+- The state of your CPU on a given instance for example will refer to
+  the values found in the *registers and relevant memory*.
+
+---
+
+# The STATE
+
+- On a specific process the state will refer to the values inside the
+  *memory addresses* it resides in.
+
+---
+
+# The STATE
+
+``` c
+int x = 3
+int y = 4
+x = x + y
 ```
 
 ---
 
-# Brute Force Recipe
+# The STATE
 
-- **Divisibility Search**
+- At the start of runtime, the state of this program would be (*for all
+  intents and purposes*) empty, since there are no relevant variables
+  declared at this point.
 
 ---
 
-# Brute Force Recipe
+# The STATE
 
-``` kotlin
-#searchSpace = [2,3,1,0,6,2,4]
-#target = 2
+| variable | value |
+|:--------:|:-----:|
+|   `x`    |   3   |
 
-i = 0
-solutions = []
-candidate = searchSpace[0]
+---
+
+# The STATE
+
+| variable | value |
+|:--------:|:-----:|
+|   `x`    |   3   |
+|   `y`    |   4   |
+
+---
+
+# The STATE
+
+| variable | value |
+|:--------:|:-----:|
+|   `x`    |   7   |
+|   `y`    |   4   |
+
+---
+
+# The STATE
+
+- You can inspect the state of a program using *debugging tools* like
+  `gdb` for gcc.
+
+---
+
+# The STATE
+
+``` bash
+gcc -g program.c -o executable
 ```
 
 ---
 
-# Brute Force Recipe
+# The STATE
 
-``` kotlin
-while(i<len(searchSpace)):
-    if candidate % target == 0:
-        solution.add(candidate)
-    candidate = searchSpace[++i]
-    
-#solution = [2,0,6,2,4]
+``` bash
+gdb ./executable
 ```
 
 ---
 
-# Brute Force Recipe
+# Assignment Statement
 
-- **Minimum Search**
-
----
-
-# Brute Force Recipe
-
-``` kotlin
-#searchSpace = [2,3,1,0,6,2,4]
-#target = None
-
-i = 1
-solutions = [searchSpace[0]]
-candidate = searchSpace[1]
-```
+- Another important construct of the imperative programming paradigm is
+  the **assignment statement**.
 
 ---
 
-# Brute Force Recipe
+# Assignment Statement
 
-``` kotlin
-while(i<len(searchSpace)):
-    if candidate <= solutions[0]
-        solutions[0] = candidate
-    candidate = searchSpace[++i]
-    
-#solution = [0]
-```
+- Assignment statements allow your program to *mutate* the values of
+  your variables.
+- And as we learned earlier, *changes to the context* of a program,
+  which includes variables, creates states.
+- Therefore, every **assignment statement**, corresponds to **new
+  states** of a for the program.
 
 ---
 
-# Brute Force Recipe
+# Assignment Statement
 
-- **Common Recipe**
-
----
-
-# Brute Force Recipe
-
-``` python
-i = 0
-solutions = []
-candidate = first()
-while(isStillSearching()):
-```
+- Assignment statements are usually executed through the use of the
+  **"`=`"** operator (some languages like Pascal use "`:=`" instead).
+- Instead of communicating some kind proposition that says two values
+  are equal, the assignment statement has an **imperative mood**.
 
 ---
 
-# Brute Force Recipe
+# Assignment Statement
 
-``` python
-    if valid(candidate):
-        updateSolution(candidate)
-    candidate = next()
-```
-
----
-
-# Brute Force Recipe
-
-![template example](../../uml/templateexample.svg)
+- The closest corresponding mathematical construct to an assignment
+  statement is the *let statement*.
+- A statement in math such as "let x be equal to 3", has an **imperative
+  mood**.
 
 ---
 
-# Brute Force Recipe
+# Assignment Statement
 
-> is `isValid()` and `updateSolution(candidate)` is different for each
-> algorithm so it doesn't have a default implementation. It would be
-> best to make these steps abstract.
+![State changes](../mermaid_diagrams/state_changes.png)
 
 ---
 
-# Why this is elegant
+# Assignment Statement
 
-- **Open/Closed Principle** - The `Template` is open for extension but
-  closed for modification
-
-- *Encapsulate what varies* - steps can vary from specialization to
-  specialization, therefore they are encapsulated into step methods.
-
-- Implementing this pattern will remove duplicate code in the common
-  parts of the algorithm.
-
-- Clients may override only certain steps in a large algorithm, making
-  it easier to create specializations
+- And you can compare the difference between the before and after of a
+  specific assignment by comparing the **before-assignment** state and
+  the **after-assignment state**.
+- The *progression* from one state to another characterizes the effect
+  of an assignment.
 
 ---
 
-# How to implement it
+# Assignment Statement
 
-1.  Create an abstract class called `Template`. It contains the method
-    `templateMethod()` broken down into separate steps through separate
-    `step1()`, `step2()`, ... and etc. methods. When invoked
-    `templateMethod()` will just call these step methods.
-2.  Each step method inside `Template` will contain the default
-    implementation of that step. If there is no default implementation,
-    the method should be abstract.
+- Imperative programming is characterized by **imperative statements**.
+- The most important type of these statements is the **assignment
+  statement**.
+- An assignment statement's effect to your computer is characterized by
+  the *progression* from one state to another state.
 
 ---
 
-# How to implement it
+# Assignment Statement
 
-3.  For every similar behavior to `templateMethod()` a specialization of
-    `Template` is created. These methods will implement all abstract
-    methods and override all step methods that vary for its behavior.
+- If boil down imperative programs at its most abstract form, it is
+  simply a *combination of assignment statements*.
+- If arranged in the correct way, a given problem (*initial state*) can
+  progress through multiple states until it reaches the solution (*final
+  state*).
+
+---
+
+# Structured Program Theorem
+
+- Creating meaningful imperative programs is done by applying the
+  **Bohm-Jacopini Theorem**, also known as the **Structured Program
+  Theorem** [@bohm_flow_1966].
+
+---
+
+# Structured Program Theorem
+
+- The theorem describes a formalism of a class called **control flow
+  graphs** which are capable of representing any computable function.
+- It is known to you as the trusty old **flow chart**.
+- A subprogram can be a *single assignment statement*, or it can be a
+  *combination* of more than one subprogram.
+
+---
+
+# Structured Program Theorem
+
+1.  Executing one subprogram, and then another subprogram (sequence)
+2.  Executing one of two subprograms according to the value of a boolean
+    (selection)
+3.  Repeatedly executing a subprogram as long as a boolean expression is
+    true (iteration)
+
+---
+
+# Structured Program Theorem
+
+![Flowcharts](../mermaid_diagrams/flowchart.png)
+
+---
+
+# Structured Program Theorem
+
+![Example Program](../mermaid_diagrams/modulo.png)
 
 ---
 class: center, middle
 
-# Iterator
+# Subparadigms under the Imperative family
 
 ---
 
-# Problem
+# Procedural programming
 
-- One of the most common iteration recipes that you'll likely implement
-  is the **for-each** loop.
-
----
-
-# Problem
-
-![iterator](../../copyright_free_drawings/iterator.png)
+- Programming languages like Fortran, ALGOL, BASIC, and C fall under the
+  **procedural paradigm**.
+- Languages under this paradigm simplify a complex system by subdividing
+  a program into different **procedures** or functions.
 
 ---
 
-# Solution
+# Object-oriented programming
 
-``` python
-i = collection.newIterator()
-while i.hasNext():
-    print(i.next())
-```
-
----
-
-# Solution
-
-![iterator](../../uml/umlOutputs/Iterator.svg)
-
----
-
-# Why this is elegant
-
-- **Single Responsibility Principle** - Traversal algorithms can now be
-  placed into separate classes that interact with an iterator instead of
-  the collection itself.
-- **Open/Closed Principle** - You can implement new types of collections
-  and iterators without touching any existing code.
-
----
-
-# Why this is elegant
-
-- You can traverse all the elements in a collection, even if you don't
-  know the exact type of the said collection.
-- Two iterators, can iterate over the same collection without problem as
-  long as the iterators are of different instances.
-
----
-
-# How to implement it
-
-1.  Create an abstraction called `Iterator` which contains the abstract
-    methods `next()` and `hasNext()`.
-2.  Create an abstraction called `Collection` which contains the
-    abstract method `newIterator()`.
-
----
-
-# How to implement it
-
-3.  For very collection that can be iterated through create a
-    realization to `Collection`. Inside these `Collection` realizations,
-    the `newIterator()` method must be implemented which simply returns
-    a new instance of the default `Iterator`. (for collections that can
-    be iterated through in more than one way, create different methods
-    for creating other iterators as well but always keep `newIterator()`
-    as the one that returns a new instance of the default iteration).
-4.  For every different way of iterating through a `Collection`
-    realization, a realization to `Iterator` must be created as well.
-
----
-
-# How to implement it
-
-5.  `Iterator` realizations should contain an attribute that refers to
-    the collection instance it is iterating through.
-
----
-
-# Optional Reading
+- Object-oriented programming focuses on modelling a system based on the
+  real world ontology of **objects**.

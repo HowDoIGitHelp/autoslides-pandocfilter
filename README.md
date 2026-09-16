@@ -67,6 +67,23 @@ Paragraphs with no headers will use the *most recent* headers as slide headers.
 Long slides are split into multiple slides, if the blocks can be split.
 Blocks that can be split are, bullet lists (including the transformed summarized paragraphs), ordered lists, display math blocks, code, table.
 
+You can configure the split behavior by controlling the slide lines (`-l`) and line width (`-w`) arguments.
+A slide is split if it exceeds the slide lines.
+The number of lines of a slide is calculated based on the slide type and line width argument.
+
+```bash
+pandoc -t json test.md | \
+    md-filter -l 6 -w 60 | \
+    pandoc -f json \
+    -t markdown-simple_tables-multiline_tables-grid_tables \
+    -o outputs/output.md
+```
+
+The following default values will be used if the arguments are not set.
+
+- slide lines (`-l`) - 6
+- line width (`-w`) - 100
+
 ```markdown
 ## Header
 
@@ -171,7 +188,7 @@ Here the markdown is converted to `json` and the resulting `json` is piped to th
 
 ```bash
 pandoc -t json test.md | \
-    md-filter "." "outputs/" | \
+    md-filter -s "." -o "outputs/" | \
     pandoc -f json \
     -t markdown-simple_tables-multiline_tables-grid_tables \
     -o outputs/output.md
@@ -185,10 +202,9 @@ OUTPUTDIR ?= $(dir $(OUTPUT))
 
 $(OUTPUT): $(SOURCE)
 	pandoc -t json $(SOURCE) | \
-		md-slides $(INPUTDIR) $(OUTPUTDIR) | \
+		md-slides -s $(INPUTDIR) -o $(OUTPUTDIR) | \
 		remarkjs | \
 		pandoc -f json \
 		-t markdown-simple_tables-multiline_tables-grid_tables \
-		>> $(OUTPUT)
         -o $(OUTPUT)
 ```
