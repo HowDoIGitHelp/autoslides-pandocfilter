@@ -103,7 +103,7 @@ The following default values will be used if the arguments are not set.
 ```
 
 ```markdown
-# Header
+## Header
 
 - item1
 - item2
@@ -114,7 +114,7 @@ The following default values will be used if the arguments are not set.
 
 ---
 
-# Header
+## Header
 
 - item7
 - item8
@@ -123,7 +123,7 @@ The following default values will be used if the arguments are not set.
 
 ---
 
-# Header
+## Header
 
 - item11
 - item12
@@ -153,7 +153,7 @@ $$
 ```
 
 ```markdown
-# Header
+## Header
 
 $$
 \begin{aligned}
@@ -166,7 +166,7 @@ $$
 
 ---
 
-# Header
+## Header
 
 $$
 \begin{aligned}

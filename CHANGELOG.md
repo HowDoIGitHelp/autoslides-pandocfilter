@@ -16,3 +16,7 @@
 ## 1.0.0.1 -- 2025-09-16
 
 - fixed issue where last slide is not affected by split filter
+
+## 1.0.0.2 -- 2025-09-16
+
+- change slide title from h1 to h2

@@ -1,17 +1,17 @@
 class: center, middle
 
-# Imperative Programming Paradigm
+## Imperative Programming Paradigm
 
 ---
 
-# Introduction
+## Introduction
 
 - Imperative programming has turned out to be the *natural* paradigm of
   programming languages.
 
 ---
 
-# Learning Outcomes
+## Learning Outcomes
 
 1.  Explain how imperative programming became the natural paradigm
 2.  Explain the concept of state in the context of imperative
@@ -21,7 +21,7 @@ class: center, middle
 
 ---
 
-# Learning Outcomes
+## Learning Outcomes
 
 4.  Create structured programs to represent algorithms
 5.  Differentiate the subparadigms procedural programming and
@@ -30,18 +30,18 @@ class: center, middle
 ---
 class: center, middle
 
-# Quick Note on Imperative Programming and Procedural Programming
+## Quick Note on Imperative Programming and Procedural Programming
 
 ---
 
-# Popularity of the Imperative Paradigm
+## Popularity of the Imperative Paradigm
 
 - Imperative programming has turned out to be the *natural* paradigm of
   programming languages.
 
 ---
 
-# Popularity of the Imperative Paradigm
+## Popularity of the Imperative Paradigm
 
 - This paradigm's dominance could be attributed to most computer
   scientists' preference towards **pragmatic** and **efficient**
@@ -49,7 +49,7 @@ class: center, middle
 
 ---
 
-# Popularity of the Imperative Paradigm
+## Popularity of the Imperative Paradigm
 
 - If you want the computer to do something for you, then you
   *communicate* to the computer that you want this and that to be done.
@@ -58,7 +58,7 @@ class: center, middle
 
 ---
 
-# Popularity of the Imperative Paradigm
+## Popularity of the Imperative Paradigm
 
 - If we rewind back to the dawn of programming languages you'll see that
   early programming languages were built to **communicate to computer
@@ -68,7 +68,7 @@ class: center, middle
 
 ---
 
-# Popularity of the Imperative Paradigm
+## Popularity of the Imperative Paradigm
 
 ``` assembly
 INC ITER
@@ -78,7 +78,7 @@ ADD AH, AL
 
 ---
 
-# Popularity of the Imperative Paradigm
+## Popularity of the Imperative Paradigm
 
 - As time went by, newer *higher level programming languages* emerged
   (higher level meaning farther from hardware and closer to human
@@ -88,7 +88,7 @@ ADD AH, AL
 
 ---
 
-# Popularity of the Imperative Paradigm
+## Popularity of the Imperative Paradigm
 
 - This progression meant that higher level programming languages built
   atop of imperative languages naturally adopted the **imperative
@@ -96,7 +96,7 @@ ADD AH, AL
 
 ---
 
-# The STATE
+## The STATE
 
 - The **state** of a program or a process on a given instance is the
   snapshot of its immediate relevant environment and context.
@@ -105,14 +105,14 @@ ADD AH, AL
 
 ---
 
-# The STATE
+## The STATE
 
 - On a specific process the state will refer to the values inside the
   *memory addresses* it resides in.
 
 ---
 
-# The STATE
+## The STATE
 
 ``` c
 int x = 3
@@ -122,7 +122,7 @@ x = x + y
 
 ---
 
-# The STATE
+## The STATE
 
 - At the start of runtime, the state of this program would be (*for all
   intents and purposes*) empty, since there are no relevant variables
@@ -130,7 +130,7 @@ x = x + y
 
 ---
 
-# The STATE
+## The STATE
 
 | variable | value |
 |:--------:|:-----:|
@@ -138,7 +138,7 @@ x = x + y
 
 ---
 
-# The STATE
+## The STATE
 
 | variable | value |
 |:--------:|:-----:|
@@ -147,7 +147,7 @@ x = x + y
 
 ---
 
-# The STATE
+## The STATE
 
 | variable | value |
 |:--------:|:-----:|
@@ -156,14 +156,14 @@ x = x + y
 
 ---
 
-# The STATE
+## The STATE
 
 - You can inspect the state of a program using *debugging tools* like
   `gdb` for gcc.
 
 ---
 
-# The STATE
+## The STATE
 
 ``` bash
 gcc -g program.c -o executable
@@ -171,7 +171,7 @@ gcc -g program.c -o executable
 
 ---
 
-# The STATE
+## The STATE
 
 ``` bash
 gdb ./executable
@@ -179,14 +179,14 @@ gdb ./executable
 
 ---
 
-# Assignment Statement
+## Assignment Statement
 
 - Another important construct of the imperative programming paradigm is
   the **assignment statement**.
 
 ---
 
-# Assignment Statement
+## Assignment Statement
 
 - Assignment statements allow your program to *mutate* the values of
   your variables.
@@ -197,7 +197,7 @@ gdb ./executable
 
 ---
 
-# Assignment Statement
+## Assignment Statement
 
 - Assignment statements are usually executed through the use of the
   **"`=`"** operator (some languages like Pascal use "`:=`" instead).
@@ -206,7 +206,7 @@ gdb ./executable
 
 ---
 
-# Assignment Statement
+## Assignment Statement
 
 - The closest corresponding mathematical construct to an assignment
   statement is the *let statement*.
@@ -215,13 +215,13 @@ gdb ./executable
 
 ---
 
-# Assignment Statement
+## Assignment Statement
 
 ![State changes](../mermaid_diagrams/state_changes.png)
 
 ---
 
-# Assignment Statement
+## Assignment Statement
 
 - And you can compare the difference between the before and after of a
   specific assignment by comparing the **before-assignment** state and
@@ -231,7 +231,7 @@ gdb ./executable
 
 ---
 
-# Assignment Statement
+## Assignment Statement
 
 - Imperative programming is characterized by **imperative statements**.
 - The most important type of these statements is the **assignment
@@ -241,7 +241,7 @@ gdb ./executable
 
 ---
 
-# Assignment Statement
+## Assignment Statement
 
 - If boil down imperative programs at its most abstract form, it is
   simply a *combination of assignment statements*.
@@ -251,7 +251,7 @@ gdb ./executable
 
 ---
 
-# Structured Program Theorem
+## Structured Program Theorem
 
 - Creating meaningful imperative programs is done by applying the
   **Bohm-Jacopini Theorem**, also known as the **Structured Program
@@ -259,7 +259,7 @@ gdb ./executable
 
 ---
 
-# Structured Program Theorem
+## Structured Program Theorem
 
 - The theorem describes a formalism of a class called **control flow
   graphs** which are capable of representing any computable function.
@@ -269,7 +269,7 @@ gdb ./executable
 
 ---
 
-# Structured Program Theorem
+## Structured Program Theorem
 
 1.  Executing one subprogram, and then another subprogram (sequence)
 2.  Executing one of two subprograms according to the value of a boolean
@@ -279,24 +279,24 @@ gdb ./executable
 
 ---
 
-# Structured Program Theorem
+## Structured Program Theorem
 
 ![Flowcharts](../mermaid_diagrams/flowchart.png)
 
 ---
 
-# Structured Program Theorem
+## Structured Program Theorem
 
 ![Example Program](../mermaid_diagrams/modulo.png)
 
 ---
 class: center, middle
 
-# Subparadigms under the Imperative family
+## Subparadigms under the Imperative family
 
 ---
 
-# Procedural programming
+## Procedural programming
 
 - Programming languages like Fortran, ALGOL, BASIC, and C fall under the
   **procedural paradigm**.
@@ -305,7 +305,7 @@ class: center, middle
 
 ---
 
-# Object-oriented programming
+## Object-oriented programming
 
 - Object-oriented programming focuses on modelling a system based on the
   real world ontology of **objects**.

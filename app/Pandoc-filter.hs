@@ -196,13 +196,13 @@ combineHeaders ls =
     zipWith interleave betweeners (oddIndices ls)
     where
         betweeners = (map ((fromMaybe defaultHeader) . listToMaybe) (evenIndices ls))
-        defaultHeader = Header 1 ( "default-headerBlock" , [] , [] ) [ Str "Default" , Space , Str "Header" ]
+        defaultHeader = Header 2 ( "default-headerBlock" , [] , [] ) [ Str "Default" , Space , Str "Header" ]
 -- interleaves a block in between the elements of a list of blocks
 -- also removes id metadata of headers
 interleave :: Block -> [Block] -> [Block]
-interleave (Header _ (_, classes, kvattrs) inlines) [] = [Header 1 ("", classes, kvattrs) inlines]
+interleave (Header _ (_, classes, kvattrs) inlines) [] = [Header 2 ("", classes, kvattrs) inlines]
 interleave (Header _ (_, classes, kvattrs) inlines) l = concatMap (\x -> [betweener,x]) l
-    where betweener = (Header 1 ("", classes, kvattrs) inlines)
+    where betweener = (Header 2 ("", classes, kvattrs) inlines)
 interleave betweener l = concatMap (\x -> [betweener,x]) l
 
 -- applies combineHeaders list of blocks in the pandoc document
