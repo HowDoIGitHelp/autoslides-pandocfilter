@@ -346,11 +346,7 @@ maskedMultilines env mathBlock = (replacedBlock, matches)
 
 -- replaces latex newlines with {{nl}}
 maskNewlines :: Text -> Text
-maskNewlines mathBlock = replacedBlock
-    where
-        rePattern = pack "\\\\\\\\"
-        replacement = pack "{{nl}}"
-        replacedBlock = gsub rePattern replacement mathBlock
+maskNewlines mathBlock = replace (pack "\\\\") (pack "{{nl}}") mathBlock
 
 envs :: [String]
 envs = ["bmatrix", "matrix", "array"]
@@ -555,8 +551,7 @@ removeTrailingSep pandoc = pandoc
 pandocFilterWithArgs :: FilterArgs -> Pandoc -> IO Pandoc
 pandocFilterWithArgs args (Pandoc meta blocks) = do
     let beforeSplitFilter =
-            removeTrailingSep
-            . walk dropNotes
+            walk dropNotes
             . topDownBlockFilter maskMath
             . topDownBlockListFilter sectionToSlides
             . insertHeaders
@@ -572,7 +567,10 @@ pandocFilterWithArgs args (Pandoc meta blocks) = do
     let linewidth = case (linewidthArg args) of
             Just w -> w
             Nothing -> 100
-    let combinedFilter = (topDownBlockListFilter (split slidelines linewidth)) . beforeSplitFilter
+    let combinedFilter =
+            removeTrailingSep
+            . (topDownBlockListFilter (split slidelines linewidth))
+            . beforeSplitFilter
     case (sourceDirArg args, sourceDirArg args) of
         (Just inputPathStr, Just outputPathStr) -> do
             inputPathAbs <- resolveDir' inputPathStr
