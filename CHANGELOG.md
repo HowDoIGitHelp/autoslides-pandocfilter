@@ -20,3 +20,7 @@
 ## 1.0.0.2 -- 2025-09-16
 
 - change slide title from h1 to h2
+
+## 1.0.0.3 -- 2025-09-16
+
+- fixed issue where `-o` argument is read as `-s` in the filter.

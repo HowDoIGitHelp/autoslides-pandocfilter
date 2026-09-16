@@ -17,7 +17,6 @@ import Data.Text
     , stripStart
     )
 import Text.Regex.Pcre2 (gsub, match, sub)
--- import Debug.Trace (trace, traceM)
 import Data.Maybe (fromMaybe, listToMaybe)
 import Path (Path, Abs, Dir, File, toFilePath)
 import Path.IO (resolveDir', resolveFile)
@@ -571,7 +570,7 @@ pandocFilterWithArgs args (Pandoc meta blocks) = do
             removeTrailingSep
             . (topDownBlockListFilter (split slidelines linewidth))
             . beforeSplitFilter
-    case (sourceDirArg args, sourceDirArg args) of
+    case (sourceDirArg args, outputDirArg args) of
         (Just inputPathStr, Just outputPathStr) -> do
             inputPathAbs <- resolveDir' inputPathStr
             outputPathAbs <- resolveDir' outputPathStr

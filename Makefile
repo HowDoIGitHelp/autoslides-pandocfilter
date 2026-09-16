@@ -16,3 +16,6 @@ filter-test-no-args:
 		pandoc -f json \
 		-t markdown-simple_tables-multiline_tables-grid_tables \
 		-o outputs/output.md
+
+test-args:
+	pandoc -t json test.md | $(filter) -s "." -o "outputs/" -l 6 -w 60
