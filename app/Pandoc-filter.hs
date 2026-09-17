@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, PatternSynonyms #-}
+{-# LANGUAGE OverloadedStrings, PatternSynonyms, ViewPatterns #-}
 
 import Text.Pandoc.JSON
 import Text.Pandoc.Walk (walk, walkM)
@@ -23,6 +23,7 @@ import Path.IO (resolveDir', resolveFile)
 import System.FilePath (splitDirectories, (</>))
 import System.Environment (withArgs)
 import Data.List (isSuffixOf)
+import Debug.Trace (trace)
 import Options.Applicative
     ( Parser
     , strOption
@@ -42,8 +43,8 @@ import Options.Applicative
     , (<**>) )
 
 data FilterArgs = FilterArgs
-    { sourceDirArg :: Maybe String
-    , outputDirArg :: Maybe String
+    { sourceDir :: Maybe String
+    , outputDir :: Maybe String
     , slidelinesArg :: Maybe Int
     , linewidthArg :: Maybe Int
     } deriving (Show)
@@ -82,6 +83,19 @@ argParser = FilterArgs
 pattern SlideSep :: Block
 pattern SlideSep <- RawBlock (Format "markdown") "---"
 
+isDisplayBlock :: Block -> Bool
+isDisplayBlock (OrderedList _ _) = True
+isDisplayBlock (BulletList _) = True
+isDisplayBlock (Table _ _ _ _ _ _) = True
+isDisplayBlock (BlockQuote _) = True
+isDisplayBlock (CodeBlock _ _) = True
+isDisplayBlock (Para [Math DisplayMath _]) = True
+isDisplayBlock (Figure _ _ _) = True
+isDisplayBlock _ = False
+
+pattern DisplayBlock :: Block
+pattern DisplayBlock <- (isDisplayBlock -> True)
+
 slideSep :: Block
 slideSep = RawBlock (Format "markdown") "---"
 
@@ -114,9 +128,22 @@ isImportant _ = False
 isImportantSentence :: [Inline] -> Bool
 isImportantSentence inlines = any isImportant inlines
 
+endsWithColon :: [Inline] -> Bool
+endsWithColon [] = False
+endsWithColon inlines =
+    case (last inlines) of
+        (Str text) -> (Data.Text.isSuffixOf (pack ":") text)
+        _ -> False
+
+predicateDisjunction :: [a -> Bool] -> (a -> Bool)
+predicateDisjunction preds = \x -> any (\p -> p x) preds
+
 endsWithPunctuation :: Inline -> Bool
 endsWithPunctuation (Str inline) =
-    (Data.Text.isSuffixOf (pack ".") inline) || (Data.Text.isSuffixOf (pack "!") inline) || (Data.Text.isSuffixOf (pack "?") inline)
+    ( (Data.Text.isSuffixOf (pack ".") inline)
+    || (Data.Text.isSuffixOf (pack "!") inline)
+    || (Data.Text.isSuffixOf (pack "?") inline)
+    || (Data.Text.isSuffixOf (pack ":") inline) )
 endsWithPunctuation _ = False
 
 softBreakInlines :: [Inline] -> [Inline]
@@ -137,7 +164,8 @@ itemize block@(Para [Math DisplayMath _]) = block
 itemize (Para inlines) = (BulletList (map (\x -> [Plain x]) importantItems))
     where
         items = listSplit isSoftBreak inlines
-        importantItems = filter isImportantSentence items
+        predicate = (predicateDisjunction [isImportantSentence])
+        importantItems = filter predicate items
 itemize block = block
 
 topDownBlockFilter :: (Block -> Block) -> Pandoc -> Pandoc
@@ -522,12 +550,9 @@ relatePath directory file
 -- replace image targets with new paths resolved from 
 -- output directory
 resolveImagePaths :: Path Abs Dir -> Path Abs Dir -> Inline -> IO Inline
-resolveImagePaths inputDir outputDir (Image attr alttext (target, title)) = do
-    absoluteImagePath <- resolveFile inputDir (unpack target)
-    -- traceM (show absoluteImagePath)
-    -- traceM (show outputDir)
-    -- traceM (show (relatePath outputDir absoluteImagePath))
-    let newPath = pack (relatePath outputDir absoluteImagePath)
+resolveImagePaths inputAbsDir outputAbsDir (Image attr alttext (target, title)) = do
+    absoluteImagePath <- resolveFile inputAbsDir (unpack target)
+    let newPath = pack (relatePath outputAbsDir absoluteImagePath)
     return (Image attr alttext (newPath, title))
 resolveImagePaths _ _ inline = return inline
 
@@ -540,12 +565,25 @@ removeTrailingSep (Pandoc meta blocks) | (Data.List.isSuffixOf [slideSep] blocks
     Pandoc meta (fromMaybe [] (initSafe blocks))
 removeTrailingSep pandoc = pandoc
 
+unOrphanBlocks :: [Block] -> [Block]
+unOrphanBlocks (header1@(Header _ _ content1) : blist@(BulletList [items]) : SlideSep : header2@(Header _ _ content2) : dblock@DisplayBlock : SlideSep : rest) | content1 == content2 =
+    case (last items) of
+        (Plain inlines)
+            | endsWithColon inlines ->
+                case [(init items)] of
+                    [[]] -> [header2, (Plain inlines), dblock, slideSep] ++ (unOrphanBlocks rest)
+                    initItems -> [header1, (BulletList initItems), slideSep, header2, (Plain inlines), dblock, slideSep] ++ (unOrphanBlocks rest)
+            | otherwise -> [header1, blist, slideSep, header2, dblock, slideSep] ++ (unOrphanBlocks rest)
+        _ -> [header1, blist, slideSep, header2, dblock, slideSep] ++ (unOrphanBlocks rest)
+unOrphanBlocks (block : rest) = block : (unOrphanBlocks rest)
+unOrphanBlocks [] = []
+
 -- validInt :: String -> Bool
 -- validInt str = case (readMaybe str :: Maybe Int) of
 --     Just int -> int > 0
 --     Nothing -> False
 
--- the main pandoc filter, returns IO Pandoc because
+-- the main pandoc filter, returns IO Pandoc becaus]e
 -- of absolute path resolution
 pandocFilterWithArgs :: FilterArgs -> Pandoc -> IO Pandoc
 pandocFilterWithArgs args (Pandoc meta blocks) = do
@@ -570,7 +608,7 @@ pandocFilterWithArgs args (Pandoc meta blocks) = do
             removeTrailingSep
             . (topDownBlockListFilter (split slidelines linewidth))
             . beforeSplitFilter
-    case (sourceDirArg args, outputDirArg args) of
+    case (sourceDir args, outputDir args) of
         (Just inputPathStr, Just outputPathStr) -> do
             inputPathAbs <- resolveDir' inputPathStr
             outputPathAbs <- resolveDir' outputPathStr
