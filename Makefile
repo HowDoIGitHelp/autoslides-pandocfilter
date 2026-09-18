@@ -1,5 +1,5 @@
-filter := dist-newstyle/build/x86_64-linux/ghc-9.10.3/pandoc-md-slides-1.0.0.4/x/md-slides/build/md-slides/md-slides
-remarkjs := dist-newstyle/build/x86_64-linux/ghc-9.10.3/pandoc-md-slides-1.0.0.4/x/remarkjs/build/remarkjs/remarkjs
+filter := dist-newstyle/build/x86_64-linux/ghc-9.10.3/pandoc-md-slides-1.1.0.0/x/md-slides/build/md-slides/md-slides
+remarkjs := dist-newstyle/build/x86_64-linux/ghc-9.10.3/pandoc-md-slides-1.1.0.0/x/remarkjs/build/remarkjs/remarkjs
 
 build-test: build filter-test
 
