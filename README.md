@@ -219,7 +219,7 @@ It also contains the following extra configurations that are currently only poss
 
 ### `keptSentences`
 
-This is a list of strings that will translated to a predicates that will be used to choose which sentences are kept in the `Para` to `BulletList` transformation.
+This is a list of strings that will be converted to a list of predicates that will be used to choose which sentences are kept in the `Para` to `BulletList` transformation.
 Predicates that are available are:
 
 - `all`: matches sentences
@@ -230,7 +230,8 @@ Predicates that are available are:
 - `none`: overrides the default, and matches no sentence.
 - `1`,`2`, `3` ...: matches the first, second, third or nth sentence
 
-You can include multiple predicates and they will be combined through disjunction.
+You can include multiple predicates. 
+These predicates will be combined through disjunction.
 
 ``` yaml
 keptSentences:
