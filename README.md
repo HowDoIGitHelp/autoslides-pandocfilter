@@ -208,3 +208,77 @@ $(OUTPUT): $(SOURCE)
 		-t markdown-simple_tables-multiline_tables-grid_tables \
         -o $(OUTPUT)
 ```
+
+## Extra configuration options
+
+You can optionally create a `slides.yaml` in the directory you are running the filter.
+This file can contain your configuration for `maxSlideLines`, `maxLineWidth`, `sourceDirectory`, `outputDirectory`.
+Program arguments applied to the filter will override the yaml configuration.
+
+It also contains the following extra configurations that are currently only possible through `slides.yaml`:
+
+### `keptSentences`
+
+This is a list of strings that will translated to a predicates that will be used to choose which sentences are kept in the `Para` to `BulletList` transformation.
+Predicates that are available are:
+
+- `all`: matches sentences
+- `important`: matches sentences that contain either `Strong` or `Emph`. This is the default behavior if `keptSentences` is not used.
+- `code`: matches sentences that contain inline `Code`
+- `math`: matches sentences that contain inline `Math`
+- `lastColon`: matches sentences that are positioned last in the paragraph and ends with `:`.
+- `none`: overrides the default, and matches no sentence.
+- `1`,`2`, `3` ...: matches the first, second, third or nth sentence
+
+You can include multiple predicates and they will be combined through disjunction.
+
+``` yaml
+keptSentences:
+  - code
+  - math
+  - important
+```
+
+Note that, for `none` to properly function as a predicate, there must be no other predicates added to the list.
+
+### `unOrphanDisplayBlocks`
+
+This is a boolean option when enabled, will use an optional transformation (applied last) that is applied on pairs of slides with the following characteristics:
+
+- The first slide contains a plain `BulletList`.
+- The last item in the `BulletList` is a sentence that ends with `:`.
+- The second slide contains a DisplayBlock (`DisplayMath`, `CodeBlock`, `Figure`, `Table`, `BulletList`, `OrderedList`).
+
+When this transformation is applied the last item from the first slide's list is transferred to the second slide.
+
+Below we can see an example of this transformation applied after the other transformations.
+
+```markdown
+## Variables
+
+- Apply universal instantiation to $\forall X q(X)$:
+
+## Variables
+
+$$
+\begin{aligned}
+q(a) \land \\
+\neg q(a)
+\end{aligned}
+$$
+```
+
+```markdown
+## Variables
+
+- Apply universal instantiation to $\forall X q(X)$:
+
+$$
+\begin{aligned}
+q(a) \land \\
+\neg q(a)
+\end{aligned}
+$$
+```
+
+When enabling this option, you can make sure that colon ending sentences are kept by adding the `lastColon` predicate in `keptSentences`.

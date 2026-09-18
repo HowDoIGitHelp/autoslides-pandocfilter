@@ -1,7 +1,9 @@
-filter := dist-newstyle/build/x86_64-linux/ghc-9.10.3/pandoc-md-slides-1.0.0.3/x/md-slides/build/md-slides/md-slides
-remarkjs := dist-newstyle/build/x86_64-linux/ghc-9.10.3/pandoc-md-slides-1.0.0.3/x/remarkjs/build/remarkjs/remarkjs
+filter := dist-newstyle/build/x86_64-linux/ghc-9.10.3/pandoc-md-slides-1.0.0.4/x/md-slides/build/md-slides/md-slides
+remarkjs := dist-newstyle/build/x86_64-linux/ghc-9.10.3/pandoc-md-slides-1.0.0.4/x/remarkjs/build/remarkjs/remarkjs
 
-filter-test:
+build-test: build filter-test
+
+filter-test: build
 	pandoc -t json test.md | \
 		$(filter) -s "." -o "outputs/" -l 6 -w 60 | \
 		$(remarkjs) | \
@@ -9,7 +11,7 @@ filter-test:
 		-t markdown-simple_tables-multiline_tables-grid_tables \
 		-o outputs/output.md
 
-filter-test-no-args:
+filter-test-no-args: build
 	pandoc -t json test.md | \
 		$(filter) | \
 		$(remarkjs) | \
@@ -17,5 +19,8 @@ filter-test-no-args:
 		-t markdown-simple_tables-multiline_tables-grid_tables \
 		-o outputs/output.md
 
-test-args:
+test-args: build
 	pandoc -t json test.md | $(filter) -s "." -o "outputs/" -l 6 -w 60
+
+build: app/Pandoc-filter.hs app/Remarkjs-pandoc-filter.hs
+	cabal build

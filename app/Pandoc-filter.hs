@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, PatternSynonyms, ViewPatterns #-}
+{-# LANGUAGE OverloadedStrings, PatternSynonyms, ViewPatterns, DeriveGeneric #-}
 
 import Text.Pandoc.JSON
 import Text.Pandoc.Walk (walk, walkM)
@@ -41,6 +41,10 @@ import Options.Applicative
     , auto
     , option
     , (<**>) )
+import GHC.Generics (Generic)
+import Data.Aeson (FromJSON)
+import Data.Yaml (decodeFileEither, ParseException)
+import Text.Read (readMaybe)
 
 data FilterArgs = FilterArgs
     { sourceDir :: Maybe String
@@ -48,6 +52,13 @@ data FilterArgs = FilterArgs
     , slidelinesArg :: Maybe Int
     , linewidthArg :: Maybe Int
     } deriving (Show)
+
+data Config = Config
+    { maxSlideLines :: Maybe Int
+    , maxLineWidth :: Maybe Int
+    , keptSentences :: Maybe [String]
+    , unOrphanDisplayBlocks :: Maybe Bool
+    } deriving (Show, Generic)
 
 argParser :: Parser FilterArgs
 argParser = FilterArgs
@@ -125,15 +136,53 @@ isImportant (Strong _) = True
 isImportant (Emph _) = True
 isImportant _ = False
 
-isImportantSentence :: [Inline] -> Bool
-isImportantSentence inlines = any isImportant inlines
+isInlineMath :: Inline -> Bool
+isInlineMath (Math InlineMath _) = True
+isInlineMath _ = False
 
-endsWithColon :: [Inline] -> Bool
-endsWithColon [] = False
-endsWithColon inlines =
-    case (last inlines) of
-        (Str text) -> (Data.Text.isSuffixOf (pack ":") text)
-        _ -> False
+isInlineCode :: Inline -> Bool
+isInlineCode (Code _ _) = True
+isInlineCode _ = False
+
+isImportantSentence :: [[Inline]] -> [Inline] -> Bool
+isImportantSentence _ inlines = any isImportant inlines
+
+hasInlineMath :: [[Inline]] -> [Inline] -> Bool
+hasInlineMath _ inlines = any isInlineMath inlines 
+
+hasInlineCode :: [[Inline]] -> [Inline] -> Bool
+hasInlineCode _ inlines = any isInlineCode inlines 
+
+endsWithColon :: [[Inline]] -> [Inline] -> Bool
+endsWithColon [] _ = False
+endsWithColon _ [] = False
+endsWithColon items inlines
+    | Data.List.isSuffixOf [inlines] items =
+        case (last inlines) of
+            (Str text) -> (Data.Text.isSuffixOf (pack ":") text)
+            _ -> False
+    | otherwise = False
+
+isNthSentence :: Int -> [[Inline]] -> [Inline] -> Bool
+isNthSentence n' list' item' = go n' list' item' 0
+    where
+        go _ [] _ _ = False
+        go n (x:xs) item acc
+            | (x == item && n == acc) = True
+            | otherwise = go n xs item (acc + 1)
+
+keptSentencePredLookup :: String -> ([[Inline]] -> [Inline] -> Bool)
+keptSentencePredLookup "important" = isImportantSentence
+keptSentencePredLookup "all" = (\_ _ -> True)
+keptSentencePredLookup "none" = (\_ _ -> False)
+keptSentencePredLookup "math" = hasInlineMath
+keptSentencePredLookup "code" = hasInlineCode
+keptSentencePredLookup "lastColon" = endsWithColon
+keptSentencePredLookup str =
+    case (readMaybe str) :: Maybe Int of
+        Just int -> isNthSentence int
+        Nothing -> (\_ _ -> False)
+
 
 predicateDisjunction :: [a -> Bool] -> (a -> Bool)
 predicateDisjunction preds = \x -> any (\p -> p x) preds
@@ -157,16 +206,14 @@ softBreakParagraph (Para inlines) = Para (softBreakInlines inlines)
 softBreakParagraph block = block
 
 --replaces paragraphs with a bulletlist of only important sentences
-itemize :: Block -> Block
-itemize block@(OrderedList _ _) = block
-itemize block@(BulletList _) = block
-itemize block@(Para [Math DisplayMath _]) = block
-itemize (Para inlines) = (BulletList (map (\x -> [Plain x]) importantItems))
+itemize :: [[[Inline]] -> [Inline] -> Bool] -> Block -> Block
+itemize _ block@(Para [Math DisplayMath _]) = block
+itemize predicateList (Para inlines) = (BulletList (map (\x -> [Plain x]) importantItems))
     where
         items = listSplit isSoftBreak inlines
-        predicate = (predicateDisjunction [isImportantSentence])
+        predicate = predicateDisjunction (map (\p -> p items) predicateList)
         importantItems = filter predicate items
-itemize block = block
+itemize _ block = block
 
 topDownBlockFilter :: (Block -> Block) -> Pandoc -> Pandoc
 topDownBlockFilter blockfilter (Pandoc meta blocks) = Pandoc meta (map blockfilter blocks)
@@ -569,7 +616,7 @@ unOrphanBlocks :: [Block] -> [Block]
 unOrphanBlocks (header1@(Header _ _ content1) : blist@(BulletList [items]) : SlideSep : header2@(Header _ _ content2) : dblock@DisplayBlock : SlideSep : rest) | content1 == content2 =
     case (last items) of
         (Plain inlines)
-            | endsWithColon inlines ->
+            | endsWithColon [inlines] inlines ->
                 case [(init items)] of
                     [[]] -> [header2, (Plain inlines), dblock, slideSep] ++ (unOrphanBlocks rest)
                     initItems -> [header1, (BulletList initItems), slideSep, header2, (Plain inlines), dblock, slideSep] ++ (unOrphanBlocks rest)
@@ -585,29 +632,32 @@ unOrphanBlocks [] = []
 
 -- the main pandoc filter, returns IO Pandoc becaus]e
 -- of absolute path resolution
-pandocFilterWithArgs :: FilterArgs -> Pandoc -> IO Pandoc
-pandocFilterWithArgs args (Pandoc meta blocks) = do
-    let beforeSplitFilter =
-            walk dropNotes
+pandocFilterWithArgs :: (Config, FilterArgs) -> Pandoc -> IO Pandoc
+pandocFilterWithArgs (config, args) (Pandoc meta blocks) = do
+    let slidelines = trace (show config) ( case (slidelinesArg args) of
+            Just l -> l
+            Nothing -> fromMaybe 6 (maxSlideLines config) )
+    let linewidth = case (linewidthArg args) of
+            Just w -> w
+            Nothing -> fromMaybe 100 (maxLineWidth config)
+    let keptSentencesPredicates = map keptSentencePredLookup (fromMaybe ["important"] (keptSentences config))
+    let optionalFilter = case (fromMaybe False (unOrphanDisplayBlocks config)) of
+            True -> topDownBlockListFilter unOrphanBlocks
+            False -> id
+    let combinedFilter =
+            removeTrailingSep
+            . optionalFilter
+            . (topDownBlockListFilter (split slidelines linewidth))
+            . walk dropNotes
             . topDownBlockFilter maskMath
             . topDownBlockListFilter sectionToSlides
             . insertHeaders
             . walk (concatMap dropStrayHRule)
             . walk (concatMap dropEmptyList)
-            . topDownBlockFilter itemize
+            . topDownBlockFilter (itemize keptSentencesPredicates)
             . topDownBlockFilter normalizedAlignment
             . topDownBlockFilter stripIndentMath
             . topDownBlockFilter softBreakParagraph
-    let slidelines = case (slidelinesArg args) of
-            Just l -> l
-            Nothing -> 6
-    let linewidth = case (linewidthArg args) of
-            Just w -> w
-            Nothing -> 100
-    let combinedFilter =
-            removeTrailingSep
-            . (topDownBlockListFilter (split slidelines linewidth))
-            . beforeSplitFilter
     case (sourceDir args, outputDir args) of
         (Just inputPathStr, Just outputPathStr) -> do
             inputPathAbs <- resolveDir' inputPathStr
@@ -616,10 +666,20 @@ pandocFilterWithArgs args (Pandoc meta blocks) = do
             return (combinedFilter (Pandoc meta replacedPathsBlocks))
         _ -> return (combinedFilter (Pandoc meta blocks))
 
+instance FromJSON Config
+
 main :: IO ()
 main = do
+    decodeResult <- decodeFileEither "slides.yaml" :: IO (Either ParseException Config)
+    config <- case decodeResult of
+        Left _ -> pure (Config
+            { maxSlideLines = Nothing
+            , maxLineWidth = Nothing
+            , keptSentences = Nothing
+            , unOrphanDisplayBlocks = Nothing })
+        Right c -> pure c
     args <- execParser opts
-    withArgs [] $ toJSONFilter (pandocFilterWithArgs args)
+    withArgs [] $ toJSONFilter (pandocFilterWithArgs (config, args))
     where
         opts = info (argParser <**> helper)
             ( fullDesc

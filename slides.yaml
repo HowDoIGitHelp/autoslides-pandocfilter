@@ -1,0 +1,4 @@
+maxLineWidth: 60
+unOrphanDisplayBlocks: True
+keptSentences:
+  - lastColon

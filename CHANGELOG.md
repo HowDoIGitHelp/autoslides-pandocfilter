@@ -24,3 +24,8 @@
 ## 1.0.0.3 -- 2025-09-16
 
 - fixed issue where `-o` argument is read as `-s` in the filter.
+
+## 1.0.0.4 -- 2025-09-18
+
+- add option for external configuration through `slides.yaml`,
+- add new configuration options through `slides.yaml`, `unOrphanDisplayBlocks`, `keptSentences`

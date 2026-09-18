@@ -3,12 +3,9 @@ class: center, middle
 ## Logic Programming Paradigm
 
 ---
+class: center, middle
 
 ## Introduction
-
-- Computer Scientists usually describe families of programming languages
-  under the logic paradigm as a sub-paradigm of declarative programming
-  (*declarative programming being any paradigm that is not imperative*).
 
 ---
 
@@ -23,15 +20,7 @@ class: center, middle
 
 ## Facts
 
-- There are three basic constructs in Prolog, **facts**, **rules** and
-  **queries**.
-- A **knowledge base** is a collection of facts and rules in the same
-  way a c library or a python package is a collection of function
-  definitions.
-
----
-
-## Facts
+Here's an example of a knowledge base:
 
 ``` prolog
 firetype(charmander).
@@ -44,6 +33,8 @@ flyingtype(charizard).
 
 ## Facts
 
+One of those are:
+
 ``` prolog
 firetype(charmander).
 ```
@@ -51,6 +42,8 @@ firetype(charmander).
 ---
 
 ## Facts
+
+For example:
 
 ``` prolog
 this_is_a_fact.
@@ -60,6 +53,9 @@ axiom_1.
 ---
 
 ## Facts
+
+A fact like, `firetype(charmander)` can be written in the form of an
+implication as such:
 
 `$$
 \begin{aligned}
@@ -85,43 +81,12 @@ resistanttofire(squirtle) :- watertype(squirtle).
 
 ## Rules
 
-- **`u :- v`**.
-- In prolog, we call the conclusion `u` as the rule **head** and the
-  hypothesis `v` as the rule **body**.
-
----
-
-## Rules
-
-- A **rule** is an implementation of a definite Horn clause.
-
----
-
-## Rules
-
 `$$
 \begin{aligned}
 \text{watertype}(\text{squirtle}) \to \text{resistanttofire}(\text{squirtle}) & \equiv \\
 \neg \text{watertype}(\text{squirtle}) \lor \text{resistanttofire}(\text{squirtle})
 \end{aligned}
 $$`
-
----
-
-## Rules
-
-- When you convert a prolog knowledge base into a Horn formula, the
-  resulting Horn formula is *guaranteed to be satisfiable*.
-- This is because the resulting Horn formula is composed of only
-  **definite clauses** and **facts**, which are satisfiable by assigning
-  TRUE to all variables.
-
----
-
-## Queries
-
-- We interact with a knowledge base by writing **queries** to Prolog.
-- Queries represent *questions* you ask Prolog.
 
 ---
 
@@ -134,6 +99,8 @@ $$`
 ---
 
 ## Queries
+
+Therefore, it responds with:
 
 ``` prolog
 true.
@@ -150,6 +117,9 @@ true.
 ---
 
 ## Queries
+
+Realizing that none of the facts match this proposition, Prolog responds
+with:
 
 ``` prolog
 false.
@@ -175,12 +145,8 @@ true.
 
 ## Queries
 
-- When you provide a query to prolog, prolog tries to prove that the
-  query is true using **proof by contradiction**.
-
----
-
-## Queries
+For example, the query `firetype(charizard), watertype(squirtle)`, is
+negated into the disjunction:
 
 `$$
 \begin{aligned}
@@ -192,14 +158,7 @@ $$`
 
 ## Queries
 
-- Therefore, the goal's negation (the original query), must be
-  **consistent** with the knowledge base's assumptions.
-- This ultimately means that it is **true** with respect to the
-  knowledge base.
-
----
-
-## Queries
+Here's an example, given the knowledge base:
 
 ``` prolog
 p.
@@ -210,6 +169,8 @@ r :- q.
 ---
 
 ## Queries
+
+And the query:
 
 ``` prolog
 ?- r.
@@ -231,6 +192,8 @@ $$`
 ---
 
 ## Queries
+
+We then check if resulting Horn formula is satisfiable:
 
 `$$
 \begin{aligned}
@@ -270,15 +233,6 @@ $$`
 ``` prolog
 true.
 ```
-
----
-
-## Variables
-
-- Another important thing about Prolog constructs is that you can write
-  them with **variables**.
-- When you write with Prolog facts or rules, you are implicitly creating
-  a *universally instantiated predicate*.
 
 ---
 
@@ -329,6 +283,9 @@ resistanttofire(squirtle) :- watertype(squirtle).
 
 ## Variables
 
+This can be interpreted in natural language as "which Pokémon are fire
+type?" Therefore, this query will yield the response:
+
 ``` prolog
 X = charmander
 X = charizard
@@ -337,6 +294,9 @@ X = charizard
 ---
 
 ## Variables
+
+Instead of the rule `resistanttofire(squirtle) :- watertype(squirtle).`
+we can write a more general rule using variables:
 
 ``` prolog
 firetype(charmander).
@@ -361,6 +321,15 @@ isresistantto(X,Y) :- watertype(X),watertype(Y).
 
 > for all pairs of X and Y, X is resistant to Y, if X is water type and
 > Y is fire type,
+
+---
+
+## Variables
+
+This statement, can be written as the following quantification
+statement:
+
+- By writing this rule, Prolog can infer the following facts:
 
 ---
 
@@ -393,6 +362,8 @@ true.
 
 ## Variables
 
+If you ask Prolog a harder question like the following:
+
 ``` prolog
 ?- isresistantto(squirtle,X).
 ```
@@ -400,6 +371,9 @@ true.
 ---
 
 ## Variables
+
+Therefore, Prolog will look for the pokémon, squirtle is resistant to,
+therefore you with the output:
 
 ``` prolog
 X = charmander
@@ -436,6 +410,8 @@ z(X) :- p(X), q(X).
 
 ## Variables
 
+Writing the knowledge base and the negation of the query as clauses:
+
 `$$
 \begin{aligned}
 p(a) \land \\
@@ -471,6 +447,8 @@ $$`
 ---
 
 ## Variables
+
+Apply universal instantiation to $\forall X q(X)$:
 
 `$$
 \begin{aligned}
