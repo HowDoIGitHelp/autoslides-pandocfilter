@@ -634,9 +634,9 @@ unOrphanBlocks [] = []
 -- of absolute path resolution
 pandocFilterWithArgs :: (Config, FilterArgs) -> Pandoc -> IO Pandoc
 pandocFilterWithArgs (config, args) (Pandoc meta blocks) = do
-    let slidelines = trace (show config) ( case (slidelinesArg args) of
+    let slidelines = case (slidelinesArg args) of
             Just l -> l
-            Nothing -> fromMaybe 6 (maxSlideLines config) )
+            Nothing -> fromMaybe 6 (maxSlideLines config)
     let linewidth = case (linewidthArg args) of
             Just w -> w
             Nothing -> fromMaybe 100 (maxLineWidth config)
