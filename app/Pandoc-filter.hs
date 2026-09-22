@@ -46,6 +46,7 @@ import Data.Aeson (FromJSON)
 import Data.Yaml (decodeFileEither, ParseException)
 import Text.Read (readMaybe)
 
+-- configuration settings for command line args
 data FilterArgs = FilterArgs
     { sourceDir :: Maybe String
     , outputDir :: Maybe String
@@ -53,6 +54,7 @@ data FilterArgs = FilterArgs
     , linewidthArg :: Maybe Int
     } deriving (Show)
 
+-- configuration settings for yaml file
 data Config = Config
     { maxSlideLines :: Maybe Int
     , maxLineWidth :: Maybe Int
@@ -60,6 +62,7 @@ data Config = Config
     , unOrphanDisplayBlocks :: Maybe Bool
     } deriving (Show, Generic)
 
+-- parser for named command line arguments of the filter
 argParser :: Parser FilterArgs
 argParser = FilterArgs
     <$> optional
@@ -94,6 +97,8 @@ argParser = FilterArgs
 pattern SlideSep :: Block
 pattern SlideSep <- RawBlock (Format "markdown") "---"
 
+-- Display blocks are blocks that are not plain
+-- markdown paragraphs
 isDisplayBlock :: Block -> Bool
 isDisplayBlock (OrderedList _ _) = True
 isDisplayBlock (BulletList _) = True
@@ -171,6 +176,10 @@ isNthSentence n' list' item' = go n' list' item' 0
             | (x == item && n == acc) = True
             | otherwise = go n xs item (acc + 1)
 
+-- this is a lookup function that maps strings
+-- with predicates
+-- this is used to configure the sentences that will be
+-- kept when the itemize filter is applied to paragraphs
 keptSentencePredLookup :: String -> ([[Inline]] -> [Inline] -> Bool)
 keptSentencePredLookup "important" = isImportantSentence
 keptSentencePredLookup "all" = (\_ _ -> True)
@@ -317,6 +326,9 @@ inlineLength (Span _ inlines) = sum (map inlineLength inlines)
 inlineLength (Quoted _ inlines) = sum (map inlineLength inlines)
 inlineLength (Cite _ inlines) = sum (map inlineLength inlines)
 
+-- calculates the component length of a block
+-- this is used to estimate block that can cause overflows
+-- that increase the height of a block
 componentLength :: Block -> Int
 componentLength (Plain inlines) = sum (map inlineLength inlines)
 componentLength (Para inlines) = sum (map inlineLength inlines)
@@ -501,6 +513,7 @@ stripIndentMath (Para [Math DisplayMath mathBlock]) =
         cleanBlock = intercalate "\n" (map stripStart splitLines)
 stripIndentMath block = block
 
+-- replace alignment envs in latex math with the environment `aligned`
 replaceAlignment :: String -> Text -> Text
 replaceAlignment env text =
     ((replace (pack ("\\begin{" ++ env ++ "}")) (pack "\\begin{aligned}"))
@@ -607,11 +620,15 @@ initSafe :: [a] -> Maybe [a]
 initSafe [] = Nothing
 initSafe l = Just (init l)
 
+-- removes the trailing separator ('---') from the document
 removeTrailingSep :: Pandoc -> Pandoc
 removeTrailingSep (Pandoc meta blocks) | (Data.List.isSuffixOf [slideSep] blocks) =
     Pandoc meta (fromMaybe [] (initSafe blocks))
 removeTrailingSep pandoc = pandoc
 
+-- this filter is used when the option unOrphanDisplayBlocks is enabled
+-- this filter will push sentences that end in colon (:) to the 
+-- next slide if the next slide is a DisplayBlock
 unOrphanBlocks :: [Block] -> [Block]
 unOrphanBlocks (header1@(Header _ _ content1) : blist@(BulletList [items]) : SlideSep : header2@(Header _ _ content2) : dblock@DisplayBlock : SlideSep : rest) | content1 == content2 =
     case (last items) of

@@ -4,16 +4,11 @@
 
 This pandoc filter converts markdown notes (written in plain prose) into summarized slides.
 The filter automatically splits long slides and resolves image target paths to new paths.
+You can also configure the filter to change slide split behavior, change paragraph transformation behavior, set source and output directories for image target replacement, add optional transformations.
 
 ## Installing using cabal
 
-You can install the package by unpacking the tarball distributable in the releases page and running `cabal install`
-
-```bash
-tar -xvf pandoc-md-slides-<version>.tar.gz
-cd pandoc-md-slides-<version>
-cabal install
-```
+You can install the package using `cabal install pandoc-md-slides`, it will install the binary `md-slides`
 
 ## Basic Usage
 
@@ -184,7 +179,9 @@ When used this way, the filter will replace image target paths with new paths re
 If a path cannot be resolved based on the output file directory, then the said path is considered an external url or absolute path.
 
 Here's an example of applying arguments to the filter.
-Here the markdown is converted to `json` and the resulting `json` is piped to the filter with arguments, transformed `json` is then piped to a pandoc transformation back to the format `markdown-simple_tables-multiline_tables-grid_tables`.
+To pass arguments to the filter, you must apply the filter directly on the AST.
+In the example below, the markdown document is converted to `json` using `pandoc` and the resulting `json` is piped to the filter with arguments.
+The transformed `json` is then piped to a pandoc transformation back to the format `markdown-simple_tables-multiline_tables-grid_tables`.
 
 ```bash
 pandoc -t json test.md | \
@@ -282,4 +279,4 @@ q(a) \land \\
 $$
 ```
 
-When enabling this option, you can make sure that colon ending sentences are kept by adding the `lastColon` predicate in `keptSentences`.
+When enabling this option, you can make sure that colon ending sentences are not filtered out by the paragraph transformation by adding the `lastColon` predicate in `keptSentences`.
