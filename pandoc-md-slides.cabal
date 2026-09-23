@@ -24,7 +24,7 @@ common warnings
 executable md-slides
     import:           warnings
     main-is:          Pandoc-filter.hs
-    build-depends:    base >= 4.19.2 && < 4.21,
+    build-depends:    base >= 4.15.1 && < 4.21,
                       pandoc-types ^>= 1.23.1,
                       text ^>=2.1.4,
                       pcre2 >= 2.3.0 && < 2.4,
