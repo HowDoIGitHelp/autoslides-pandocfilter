@@ -41,7 +41,7 @@ executable md-slides
 executable remarkjs
     import:           warnings
     main-is:          Remarkjs-pandoc-filter.hs
-    build-depends:    base >= 4.19.2 && < 4.21,
+    build-depends:    base >= 4.15.1 && < 4.21,
                       pandoc-types ^>= 1.23.1,
                       text ^>=2.1.4,
     hs-source-dirs:   app
